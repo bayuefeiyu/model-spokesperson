@@ -1,0 +1,13 @@
+# Merge into your chosen DSH 0.2.1-rc.3 profile after installing the bundle.
+# Replace provider/model IDs with routes already configured in DSH. No API keys here.
+- id: model-spokesperson-host
+  config:
+    enabled: true
+    rules:
+      - source: { provider: YOUR_A_PROVIDER, model: YOUR_A_MODEL }
+        writer: { provider: YOUR_B_PROVIDER, model: YOUR_B_MODEL }
+    style: '中文，结论先行，少术语，忠实于原文。'
+    timeoutMs: 45000
+    maxConcurrentRewrites: 2
+    maxInputChars: 30000
+    maxOutputTokens: 8192

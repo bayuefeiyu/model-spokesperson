@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-27T22:37:16.791258+08:00",
+  "installation": "G:\\ai\\harness\\dsh desktop",
+  "archive": {
+    "path": "G:\\ai\\harness\\dsh desktop\\resources\\app.asar",
+    "bytes": 182434783,
+    "sha256": "04b32e3a872826ba15cfb2081c6a929a8d4ecaa65e09a2543e5a6b30e2eff1f0"
+  },
+  "limitations": [
+    "This inspects the specified directory, not the actual running application.",
+    "No latest-release lookup or runtime compatibility test is performed.",
+    "API presence does not prove that replacing a built-in chat renderer is supported.",
+    "No user configuration, credentials, session logs or model APIs are accessed."
+  ],
+  "packages": {
+    "desktop": {
+      "asarPath": "package.json",
+      "sha256": "ac5d5922a061519322befb742e8b8285197d6ca975a2a38e8049ef37c67e63d2",
+      "name": "@deepseek-ai/dsh-desktop",
+      "version": "0.2.1-rc.3",
+      "dshBuildCommit": "be72761ee1a6736ebcdf4f3739363b083ae53c98",
+      "dshBuildDirty": false
+    },
+    "dsh": {
+      "asarPath": "dsh/node_modules/@deepseek-ai/dsh/package.json",
+      "sha256": "11831849c0a40031562e07b6b650e6b417bf4741d15bac896f73397cf8606a91",
+      "name": "@deepseek-ai/dsh",
+      "version": "0.2.1-rc.3",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "directory": "apps/cli"
+      }
+    },
+    "dsh-llm": {
+      "asarPath": "dsh/node_modules/@deepseek-ai/dsh-llm/package.json",
+      "sha256": "381b8948adee1ae66db2a301a22df879aa780604143e494daf1b07ada57d668f",
+      "name": "@deepseek-ai/dsh-llm",
+      "version": "0.2.1-rc.3",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "directory": "packages/llm/llm"
+      }
+    },
+    "dsh-agent": {
+      "asarPath": "dsh/node_modules/@deepseek-ai/dsh-agent/package.json",
+      "sha256": "3ed4384bc3bf273bfc1d8cba104f073daf9d72fb8e7e995325708cd22b510f99",
+      "name": "@deepseek-ai/dsh-agent",
+      "version": "0.2.1-rc.3",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "directory": "packages/core/agent"
+      }
+    },
+    "dsh-client-ui-chat": {
+      "asarPath": "dsh/node_modules/@deepseek-ai/dsh-client-ui-chat/package.json",
+      "sha256": "12fca533ab0c1ce6f2407362564a97ba7634f576ac661769c9e1342c0cff6f38",
+      "name": "@deepseek-ai/dsh-client-ui-chat",
+      "version": "0.2.1-rc.3",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "directory": "packages/client/ui-chat"
+      }
+    },
+    "cordis": {
+      "asarPath": "dsh/node_modules/@deepseek-ai/cordis/package.json",
+      "sha256": "b73831b926b16cbd684aa1b277461e7800a2b35e2dd351ad3c2c8c0db158589d",
+      "name": "@deepseek-ai/cordis",
+      "version": "4.0.5",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+        "directory": "vendor/cordis"
+      }
+    }
+  },
+  "interfaces": {
+    "dsh/node_modules/@deepseek-ai/dsh-llm/lib/index.js": {
+      "sha256": "d18d8ae4c8d961e628708c1e4698e09716a0ebb80e55a672e0bde1029bec1155",
+      "matches": [
+        {
+          "pattern": "isAgentLoopRequest",
+          "line": 386,
+          "text": "function isAgentLoopRequest(request) {",
+          "nextLine": "\treturn AGENT_LOOP_REQUESTS.has(request);"
+        },
+        {
+          "pattern": "isAgentLoopRequest",
+          "line": 2429,
+          "text": "export { ACCOUNT_QUOTA_EXCEEDED_CODE, APP_IDENTITY, AssistantStreamAccumulator, BlockAssembler, CONTEXT_SUMMARY_MAX_CHARS, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, HarnessError, IMAGE_OFFLOAD_REQUIRED_CODE, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmAttemptId, LlmError, LlmRuntime, LlmRuntime as default, MessageId, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, ToolCallId, assembleAssistantStream, assertUsableApiKey, assistantStreamChunks, assistantStreamFirstTokenTime, assistantStreamHasVisibleContent, assistantStreamHasVisibleText, attributionHeaders, boundContextSummary, callConfigEquals, chunkHasVisibleText, contentHasFile, contentHasImage, createAssistantMessage, createDeveloperMessage, createMessage, createSystemMessage, createToolResultMessage, ",
+          "nextLine": ""
+        },
+        {
+          "pattern": "\"llm/stream\"",
+          "line": 2397,
+          "text": "\t\t\treturn this.ctx.waterfall(this, \"llm/stream\", options, () => this.adapterStream(options, prepared));",
+          "nextLine": "\t\t}"
+        }
+      ],
+      "missingPatterns": []
+    },
+    "dsh/node_modules/@deepseek-ai/dsh-llm/lib/typert.host.js": {
+      "sha256": "22d86e67e013714b9b70eb119f85b825d73a52e30d6ebd5d7894dc4a2965076a",
+      "matches": [
+        {
+          "pattern": "\"name\": \"GenerateOptions\"",
+          "line": 359,
+          "text": "            \"name\": \"GenerateOptions\",",
+          "nextLine": "            \"declaration\": \"export interface GenerateOptions {\\n    provider: string;\\n    model: string;\\n    reasoningEffort?: ReasoningEffortId;\\n    messages: RequestMessage[];\\n    system?: string;\\n    tools?: ToolSchema[];\\n    toolHistory?: ToolHistory;\\n    temperature?: number;\\n    maxTokens?: number;\\n    stop?: string[];\\n    signal?: AbortSignal;\\n    sessionId?: Branded<'SessionId'>;\\n    purpose?: 'compaction' | 'session-title';\\n}\""
+        },
+        {
+          "pattern": "\"name\": \"FinishReasonMap\"",
+          "line": 355,
+          "text": "            \"name\": \"FinishReasonMap\",",
+          "nextLine": "            \"declaration\": \"export interface FinishReasonMap {\\n    stop: { kind: 'stop'; };\\n    'tool-calls': { kind: 'tool-calls'; };\\n    'max-tokens': { kind: 'max-tokens'; };\\n    aborted: { kind: 'aborted'; failure: LlmFailure; };\\n    error: { kind: 'error'; failure: LlmFailure; };\\n}\""
+        },
+        {
+          "pattern": "\"name\": \"StreamChunk\"",
+          "line": 571,
+          "text": "            \"name\": \"StreamChunk\",",
+          "nextLine": "            \"declaration\": \"export type StreamChunk = { type: 'block-start'; index: number; blockType: ContentBlockType; } | { type: 'text-delta'; index: number; text: string; } | { type: 'reasoning-delta'; index: number; text: string; } | { type: 'tool-call-delta'; index: number; id: ToolCallId; name?: string; argumentsDelta: string; } | { type: 'block-end'; index: number; block: ContentBlock; } | { type: 'usage'; usage: TokenUsage; } | { type: 'finish'; reason: FinishReason; replayState?: ReplayEnvelope; };\""
+        },
+        {
+          "pattern": "\"name\": \"llm/stream\"",
+          "line": 698,
+          "text": "        \"name\": \"llm/stream\",",
+          "nextLine": "        \"mode\": \"waterfall\","
+        }
+      ],
+      "missingPatterns": []
+    },
+    "dsh/node_modules/@deepseek-ai/dsh-llm/README.md": {
+      "sha256": "9cc8f2c8d30f9ba44afb8d14f3bbf5f31fbdfb01f950a51a49a1322e2a841049",
+      "matches": [
+        {
+          "pattern": "deep-frozen",
+          "line": 12,
+          "text": "Use `@deepseek-ai/dsh-llm` to stream model calls through configured provider adapters, discover models, and resolve model capabilities and call defaults. Callers must keep all model-visible input reconstructable from the session log. Loop-built requests arrive deep-frozen, so extensions and adapters cannot rewrite them. Each stream is one provider attempt: provider-specific translation stays with its adapter, while the optional `@deepseek-ai/dsh-llm-retry` package re-runs failed requests. Streams always end with a terminal result, so callers can handle success, failure, and cancellation consistently.",
+          "nextLine": ""
+        },
+        {
+          "pattern": "deep-frozen",
+          "line": 107,
+          "text": "The service is built on one separation: **the logical contract is provider-neutral, adapters own the wire.** It defines the canonical message, content-block, and stream-chunk vocabulary once, and every provider adapter translates only its own wire format into that vocabulary. The registry is the topology owner — adapter routes, configurable-provider entries, and discovery offers all register here and are disposed with their fiber — while an agent-loop request stays a pure function of the session log: loop-built requests arrive deep-frozen, so listeners and adapters read them and never rewrite them.",
+          "nextLine": ""
+        },
+        {
+          "pattern": "replay",
+          "line": 89,
+          "text": "- **Read an embedded Assistant stream without expanding it** — `assistantStreamFirstTokenTime` (first token), `assistantStreamHasVisibleContent` (any visible content), and `assistantStreamHasVisibleText` (any visible text) answer their questions from the compact records with early exit; `lastAssistantStreamChunk` scans backward to the last raw chunk of one type, `assistantStreamChunks` and `joinAssistantStreamText` scan the whole stream, and `assembleAssistantStream` feeds a `BlockAssembler` one joined delta per run with the same blocks, usage, and replay state as the per-member expansion. `runFirstTokenTime` and `runFirstVisibleTime` do the early-exit scan for one packed run, and `isTokenDelta`, `isVisibleChunk`, and `chunkHasVisibleText` define the token and visibility rules for a single",
+          "nextLine": ""
+        },
+        {
+          "pattern": "replay",
+          "line": 134,
+          "text": "- **Replay state travels only within one adapter** — assistant replay state rides along only when the same adapter instance owns the historical and target routes; otherwise it is dropped before dispatch.",
+          "nextLine": "- **Prepared calls are one-shot** — a prepared call can be dispatched exactly once, and its call-config fields must match the prepared config."
+        },
+        {
+          "pattern": "ctx.llm.stream",
+          "line": 50,
+          "text": "for await (const chunk of ctx.llm.stream({",
+          "nextLine": "  provider: 'deepseek-official',"
+        },
+        {
+          "pattern": "ctx.llm.stream",
+          "line": 84,
+          "text": "- **Stream one model call** — `ctx.llm.stream(options)` yields raw chunks (token-level deltas) for any registered provider and model; consumers assemble them with `BlockAssembler`.",
+          "nextLine": "- **Register provider adapters** — an adapter owns one or more provider routes, and its registration captures that route's retry policy; registering the same route twice fails with `DUPLICATE_ADAPTER`."
+        }
+      ],
+      "missingPatterns": []
+    },
+    "dsh/node_modules/@deepseek-ai/dsh-client-ui-chat/README.md": {
+      "sha256": "4c490b99a09d2d3136c3cfd06931d12f400acb5047baab8a92fd5a29b7fc7919",
+      "matches": [
+        {
+          "pattern": "does not assemble",
+          "line": 13,
+          "text": "Use this package to render a browser chat from recorded Session conversations, including historical images, localized actions, and restored scroll position. Work-details modes control reasoning previews and process visibility without hiding final answers; Verbose keeps completed-turn process rows visible. Local transcript and steering submissions appear immediately, remain in their original surface, and disappear atomically when authoritative Session records arrive, while queued submissions stay outside Chat. The package does not assemble or modify model requests.",
+          "nextLine": ""
+        },
+        {
+          "pattern": "does not assemble",
+          "line": 182,
+          "text": "None; Chat presentation does not assemble or mutate provider requests.",
+          "nextLine": ""
+        },
+        {
+          "pattern": "replay",
+          "line": 60,
+          "text": "Generic command rows retain the ordinary command glyph in every lifecycle state; failure remains explicit through the row state and summary. Every terminal Turn failure renders its inline red-dot row; a quota failure's row states the neutral `message.failure.quota` copy instead of the provider message. The transient notice for a newly appended `QUOTA` or `ACCOUNT_QUOTA` comes from this package's frame-wide entry in `shell.overlay`, which outlives the Chat panel: it offers the one live notice to the `shell.quota-notice` chain and falls back to its own warning Toast, while an entry that claims the code replaces that fallback. Only Sessions this Client has bound and materialized publish; quota failures in Sessions it never opened do not. A newer notice replaces the current one unless a claimi",
+          "nextLine": ""
+        },
+        {
+          "pattern": "Assistant",
+          "line": 38,
+          "text": "`ChatView` supplies file and HTTP(S) navigation through the existing `MarkdownDelegateProvider` around its node list, passing `requestOpenFile`, `openExternalLink`, and `fileImages` directly. Its file opener retains Chat's failure feedback and retry handling. Assistant Markdown file links open in the right Sidebar after the message settles, including references to unmodified files. Relative paths resolve in the viewed Session's workspace; absolute paths retain the same Session's filesystem access. `#L24` and `#L24-L30` navigate to the first specified line and reuse an existing file tab. Missing files show the preview's error state.",
+          "nextLine": ""
+        },
+        {
+          "pattern": "Assistant",
+          "line": 40,
+          "text": "Native message images use separate user and output positions. The `conversation.chat.user.content` Factory declares `conversation.chat.user.images`, which `UserContent` renders; the Assistant node registration declares `conversation.chat.message.images`, which `AssistantMarkdown` renders. Both receive image sources, the authorized `loadImage`, and layout options through explicit props. Their official `MessageImages` entries call the shared root-scoped `conversation.images.content` Factory. Each position can be replaced independently without duplicating the gallery implementation.",
+          "nextLine": ""
+        }
+      ],
+      "missingPatterns": []
+    },
+    "dsh/node_modules/@deepseek-ai/dsh/README.md": {
+      "sha256": "f80e7498e2718eb5ff85fd43d2e6d389ecceff24c4378651d0d89f3843c7a29e",
+      "matches": [
+        {
+          "pattern": "DSH_HOME",
+          "line": 11,
+          "text": "| `dsh <name>` / `dsh --profile <name>` | Boot the named profile under `$DSH_HOME/profiles/<name>`. |",
+          "nextLine": "| `dsh --profile <name> --from-default-profile <template>` | Replace a custom profile with a fresh copy of a shipped template, then boot it. |"
+        },
+        {
+          "pattern": "DSH_HOME",
+          "line": 43,
+          "text": "- then the profile's `cordis.patch.yml`, then the home-level `$DSH_HOME/cordis.patch.yml`",
+          "nextLine": "- then `--patch` overlays"
+        },
+        {
+          "pattern": "Desktop-installed command",
+          "line": 20,
+          "text": "The invoking directory is the default workspace root. The `web`, `headless`, `sdk`, `sdk-minimal`, and `acp` profiles auto-initialize on first use from shipped templates. Create or reset another profile at a non-shipped name with `--from-default-profile`, or initialize a base-backed profile through `dsh plugin`. The `desktop` name is reserved for the Electron-owned profile, so the CLI rejects boot and config-dump requests for it. The npm CLI also rejects its plugin-management requests; the [Desktop-installed command](../desktop/README.md#bundled-command-runtime) can manage the initialized Desktop profile using that installation’s runtime.",
+          "nextLine": ""
+        },
+        {
+          "pattern": "peer ranges",
+          "line": 39,
+          "text": "Installation and profile startup enforce the declared `engines.dsh` range, or DSH peer ranges when it is absent, against the same runtime version shown by `dsh --version`. Incompatible plugins require an explicitly acknowledged exact-version exemption. The [plugin manager's compatibility reference](../../packages/boot/plugin-manager/README.md#version-compatibility-and-exemptions) documents `version-exemptions`, `allow-version`, `revoke-version`, persistence, and risks.",
+          "nextLine": ""
+        }
+      ],
+      "missingPatterns": []
+    },
+    "dsh/node_modules/@deepseek-ai/dsh-home-paths/README.md": {
+      "sha256": "eafaf6e8588450ba6ed73d6c41646df58e1df8817554b6baa8ea1bc876d69175",
+      "matches": [
+        {
+          "pattern": "explicit path wins",
+          "line": 12,
+          "text": "`@deepseek-ai/dsh-home-paths` lets package authors resolve the DeepSeek Harness data root and the shared agent configuration root their consumers read. An explicit path wins over the environment variable, which wins over the default under the operating-system home; blank environment values are ignored. Its public helpers can render a root without revealing an absolute machine path, expand only bare or current-user tilde forms, and canonicalize watch targets whose final components do not yet exist. Use it as a direct library dependency, not through `cordis.yml`.",
+          "nextLine": ""
+        },
+        {
+          "pattern": "highest precedence",
+          "line": 39,
+          "text": "An explicit configured path has the highest precedence, then `$DSH_HOME`, then the default `~/.dsh`. An empty or whitespace-only `$DSH_HOME` is treated as unset, so a blank override never resolves the home to the current working directory.",
+          "nextLine": ""
+        }
+      ],
+      "missingPatterns": []
+    }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "validationDate": "2026-10-28",
+  "pluginVersion": "0.1.0",
+  "dshVersion": "0.2.1-rc.3",
+  "dshBuildCommit": "be72761ee1a6736ebcdf4f3739363b083ae53c98",
+  "nodeVersion": "v24.20.0",
+  "artifact": {
+    "path": "dist/dsh-plugins-model-spokesperson-0.1.0.tgz",
+    "bytes": 27773,
+    "sha256": "f240c05ab3091f64506d1fade6c83339d1bcb03dbbb0e09f428022fa1c8aa71a",
+    "installedCodeMatches": true
+  },
+  "checks": {
+    "typecheck": "pass",
+    "tests": {
+      "pass": 19,
+      "fail": 0
+    },
+    "build": "pass",
+    "pack": "pass",
+    "browser": {
+      "runtime": "0.2.1-rc.3",
+      "browser": "headless Microsoft Edge",
+      "checks": [
+        "candidate original never displayed while pending",
+        "official reasoning disclosure remains usable",
+        "B in original row with working original disclosure",
+        "refresh replays saved rewrite with no new model calls"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "fallback": {
+      "fallbackToOriginal": true,
+      "modelCalls": 2,
+      "sourceRepeated": false,
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "history": [
+      {
+        "mode": "ready",
+        "historyWithoutNewCalls": true,
+        "pageErrors": []
+      },
+      {
+        "mode": "disabled",
+        "historyWithoutNewCalls": true,
+        "pageErrors": []
+      },
+      {
+        "mode": "uninstalled",
+        "historyWithoutNewCalls": true,
+        "pageErrors": []
+      }
+    ]
+  },
+  "realModelApiCalls": 0,
+  "dailyInstallationModified": false,
+  "dailyProfileModified": false,
+  "notValidated": [
+    "real A/B model quality, latency and cost",
+    "desktop Electron installation",
+    "real attachment UI",
+    "long-history pagination",
+    "multi-client disconnect/reconnect",
+    "complete deletion/regeneration browser matrix",
+    "future version migration"
+  ],
+  "sourceChecksums": {
+    "src/client.ts": "d408c6c533538f6f1b08f6e3528cd4ad404d0d8f28b2910b9cfbe9800935afa6",
+    "src/contract.ts": "0e015102a1a237152320436036bee9e0eee6ae0da244a65bba15463d02ea88c3",
+    "src/host-types.ts": "27c89fd26392bebd1e5b50b918d267e6783f313f05bb7a5336017b25a647855f",
+    "src/host.ts": "bd7869b1a4de72f3ca2d9fae322d6fb1f46c21ef13f1fc6383f7d5fb78fabfb5",
+    "src/policy.ts": "6bb9a90fd8a5825a5bc82b183634aa39f7e09d8b0dcbc4ab0e6d46e34045ea84",
+    "src/presentation.tsx": "f1f8f5657b6c89d4150d3c9f3ebe8d9ffb23503834cb347ce031c3c9c8622d9f",
+    "src/projection.ts": "03f48163a1707b27d5178bb431533388165b1f2768013ae7126582344928d981",
+    "src/prompt.ts": "f9fc74c09bf23f814b0404df224003989ae6f9fd02da2625463b275e7a83fd64",
+    "src/queue.ts": "4591456fa2eed9b6eb84488f23ec3e80bcacf6c1d8c4fe30e922ee2de62b40fa",
+    "tests/client.test.tsx": "84439315cbd4ab0b94b5bf1b3a77c81aa1fa6529d0620913be7f28cc4648d6aa",
+    "tests/host.test.ts": "34692cdfed49e85268216b3f5ac56bbe4b443fa5b0b56373566f40c2f6c9cc92",
+    "tests/policy.test.ts": "773f8cd7b26cebbfaf702e17d0228c989c888cddfe0bbf1f47dcd1146fa5dd8a",
+    "tests/presentation.test.tsx": "fb157566f7ada6fe75efeae5cbd0d31a1ee20f4ab7190309b2c0dafe47fea72f",
+    "package.json": "3362db79a7346a98a3ea0904b8412e511e0d3fbe94a79471caf3cf811222c317",
+    "package-lock.json": "36fc967ff698142d2115c8bba57b4035e342949a9ff9bd85655ec1bc0eb4f4eb",
+    "tsconfig.host.json": "8404a68ab9c202c5064c79e686abf1140f745100f8fa01b0c5f31cdb580b20be",
+    "tsconfig.client.json": "faa1412ce311127e96637fb465770769ae9b27fd25be7595e8571b0dcb03b248",
+    "scripts/build.mjs": "09fe6096ef2221571229af7ee9fdc5db48395045c5ef678cf4bab977832a6638",
+    "scripts/pack.mjs": "874f12fad0531fbdf4b38e691fe7b7b9e681475d1029d00032255a352e047581",
+    "packages/bundle/cordis.patch.yml": "7f58e45de5b94d51dc19572685a3b923642bde5e6661a866e19430cdf4f401bc"
+  }
+}

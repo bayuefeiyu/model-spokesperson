@@ -1,0 +1,11 @@
+{
+  "name": "@dsh-plugins/model-spokesperson-ui", "version": "0.1.0", "type": "module",
+  "description": "Display saved rewrites in the original assistant row",
+  "main": "lib/index.js", "exports": { ".": "./lib/index.js", "./client": "./lib/client.js", "./package.json": "./package.json" },
+  "files": ["lib"],
+  "dsh": { "client": { "inject": ["@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-renderer", "@deepseek-ai/dsh-client-ui-session"], "platform": "web" } },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5", "@deepseek-ai/dsh-client-ui-chat": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.3", "@deepseek-ai/dsh-client-ui-session": "0.2.1-rc.3", "react": "^18.3.1", "zod": "4.4.3"
+  }
+}

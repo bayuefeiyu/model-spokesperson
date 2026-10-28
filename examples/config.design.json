@@ -1,0 +1,22 @@
+{
+  "_status": "HISTORICAL_DESIGN_ONLY_USE_config.json_OR_cordis.patch.yml",
+  "enabled": false,
+  "rules": [
+    {
+      "source": { "provider": "mock-provider", "model": "model-a" },
+      "writer": { "provider": "mock-provider", "model": "model-b" }
+    }
+  ],
+  "scope": "user-facing-main-chat",
+  "eligibility": "successful-text-without-tool-calls",
+  "presentation": { "showOriginal": true, "publishAfterValidation": true },
+  "failurePolicy": "show-original",
+  "style": { "language": "zh-CN", "instructionFile": "prompts/rewrite.zh.md" },
+  "limits": { "timeoutMs": 45000, "maxConcurrentRewrites": 2, "maxInputChars": 30000 },
+  "_notes": [
+    "All fields and numeric defaults are proposals. Implement and validate a real Config schema before use.",
+    "Do not interpret this file as a bundle manifest, provider configuration or authorization to enable a plugin.",
+    "Use existing DSH provider credentials. Do not put API keys here.",
+    "Over-limit input should fall back explicitly; do not silently truncate essential report content."
+  ]
+}

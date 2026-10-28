@@ -1,0 +1,15 @@
+node_modules/
+dist/
+lib/
+coverage/
+.dev/
+.cache/
+.tmp/
+__pycache__/
+*.pyc
+*.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.example
+evidence/private/
