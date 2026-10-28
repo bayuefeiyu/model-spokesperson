@@ -21,6 +21,8 @@
 
 隔离 profile 为 spokesperson-ui，home 在 .dev/runtime/spokesperson-home，Web 端口 31949，工作区在 .dev/documents。仅调用本地 mock，没有真实模型费用，没有修改日常桌面配置。截图见 settings-ui.png。既有真实模型、完整桌面/附件/多客户端质量验收边界保持不变。
 
-## 发布前复核
+## 发布复核
 
-最终安装包及 GitHub 发布信息在本次交付前补入 settings-validation.json。更新后的预构建入口随 Git 提交，安装不要求执行构建。
+[v0.1.2](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.1.2) 已发布，标签对应 13a996b13c2e312b237bf23a02e0bff9ad377aa8。安装包与 SHA256SUMS.txt 均从 GitHub 下载验证通过。安装包 SHA-256 为 `fc9dc2e252f8ac45bdd14d6c5be6f496c8d87222c2cf82898196562bf91a9328`，大小 41969 字节。机器可读结果见 settings-validation.json。
+
+预构建入口已随 Git 提交，GitHub 安装不要求执行构建。所有本次测试服务均已停止。
