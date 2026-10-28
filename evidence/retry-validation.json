@@ -68,5 +68,32 @@
   },
   "realModelApiCalls": 0,
   "dailyInstallationModified": false,
-  "dailyProfileModified": false
+  "dailyProfileModified": false,
+  "restart": {
+    "version": "0.2.2",
+    "checks": [
+      "cold persisted failure resumes via native session controller, retries only B and reuses saved draft",
+      "successful historical retry reloads without further model calls",
+      "historical retry B calls: 2"
+    ],
+    "pageErrors": [],
+    "realApiCalls": 0
+  },
+  "githubSource": {
+    "verified": true,
+    "url": "https://github.com/bayuefeiyu/model-spokesperson",
+    "testedCommit": "09bceb2d33411c7ec667a4769a456ae6cda29ddd",
+    "coldHistoricalRetry": true,
+    "manager": {
+      "version": "0.2.2",
+      "source": "github",
+      "bundleRecognized": true,
+      "components": [
+        "model-spokesperson-host",
+        "model-spokesperson-ui"
+      ],
+      "bundleDisabledAndReenabled": true,
+      "pageErrors": []
+    }
+  }
 }

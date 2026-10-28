@@ -1,0 +1,10 @@
+{
+  "version": "0.2.2",
+  "checks": [
+    "cold persisted failure resumes via native session controller, retries only B and reuses saved draft",
+    "successful historical retry reloads without further model calls",
+    "historical retry B calls: 2"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}
