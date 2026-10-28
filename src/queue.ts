@@ -2,7 +2,9 @@
 export class RewriteQueue {
   private active = 0;
   private waiting: (() => void)[] = [];
-  constructor(private readonly capacity: number) {}
+  constructor(private capacity: number) {}
+  setCapacity(capacity: number) { this.capacity = capacity; this.drain(); }
+  private drain() { while (this.active < this.capacity && this.waiting.length) this.waiting.shift()!(); }
   async run<T>(signal: AbortSignal, work: () => Promise<T>): Promise<T> {
     signal.throwIfAborted();
     await new Promise<void>((resolve, reject) => {
@@ -16,6 +18,6 @@ export class RewriteQueue {
       else { this.waiting.push(start); signal.addEventListener('abort', abort, { once: true }); }
     });
     try { signal.throwIfAborted(); return await work(); }
-    finally { this.active--; this.waiting.shift()?.(); }
+    finally { this.active--; this.drain(); }
   }
 }

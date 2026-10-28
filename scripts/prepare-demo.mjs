@@ -5,6 +5,7 @@ const runtime = resolve(root, '.dev/runtime');
 const profileName = process.argv[2] ?? 'spokesperson-dev';
 if (!/^[a-zA-Z0-9_-]+$/.test(profileName)) throw new Error('Invalid test profile name');
 const profile = resolve(root, '.dev/runtime/spokesperson-home/profiles', profileName);
+const emptySettings = process.argv.includes('--empty-settings');
 await mkdir(profile, { recursive: true });
 await writeFile(resolve(runtime, 'spokesperson-mock.mjs'), `
 import { LlmAdapter, isAgentLoopRequest } from '@deepseek-ai/dsh-llm';
@@ -16,7 +17,7 @@ export function apply(ctx) {
     providerInfo(id) { return {id,name:'Spokesperson mock（不调用 API）'}; }
     async listModels(provider) { return ['a','b','c'].map(id => ({provider,id,name:'Mock '+id.toUpperCase(),inputModalities:['text']})); }
     async *stream(options) {
-      await appendFile(${JSON.stringify(resolve(root, '.dev/workspace/calls.jsonl'))}, JSON.stringify({model:options.model,loop:isAgentLoopRequest(options),purpose:options.purpose ?? null,messages:options.messages})+'\\n');
+      await appendFile(${JSON.stringify(resolve(root, '.dev/workspace/calls.jsonl'))}, JSON.stringify({model:options.model,loop:isAgentLoopRequest(options),purpose:options.purpose ?? null,messages:options.messages,system:options.system,maxTokens:options.maxTokens})+'\\n');
       if (options.model === 'b') {
         await delay(1000,undefined,{signal:options.signal});
         const data = JSON.parse(options.messages[0].content[0].text);
@@ -35,13 +36,14 @@ export function apply(ctx) {
 }
 `);
 const mock = resolve(runtime, 'spokesperson-mock.mjs').replaceAll('\\', '/');
+const hostSettings = emptySettings ? '    enabled: false\n    rules: []' : `    enabled: true
+    rules:
+      - source: { provider: spokesperson-mock, model: a }
+        writer: { provider: spokesperson-mock, model: b }`;
 await writeFile(resolve(profile, 'cordis.patch.yml'), `
 - id: model-spokesperson-host
   config:
-    enabled: true
-    rules:
-      - source: { provider: spokesperson-mock, model: a }
-        writer: { provider: spokesperson-mock, model: b }
+${hostSettings}
 - id: agent-default-model
   config: { provider: spokesperson-mock, model: a }
 - id: session-telemetry-otel

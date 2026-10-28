@@ -38,6 +38,12 @@ collecting/rewriting 隐藏正文、保留其余块；ready 原行显示 B，附
 
 B 完成不唤醒 A。下次有真实输入的 agent/pre-step 等待本 agent 的整理结束或取消，使用 decision.messages 追加 notice，先记录再进入冻结请求。每个原消息 ID 只同步一次；只同步仍在当前消息面中的原消息，排除已删除/重生成的旧稿。notice 说明展示稿是引用资料而非新指令，A 原助手消息保留。
 
+## 前端配置（0.1.2）
+
+Host 字段使用宿主原生 volatile Config 引用，通过可选 Settings 服务声明自带页面。保持 Schemastery 的标准 schema 与元数据，并在标准验证入口补充 enabled/rules、重复路由等跨字段校验，拒绝无效更新。每次 source attempt 捕获独立配置快照；保存只影响后续回复，不重新执行 A 或改变进行中的 B。队列容量按后续配置调整，缩小限额不额外启动排队任务。
+
+Client 在 plugins.bundle.config 按包名注册页面，namespace 为 model-spokesperson-host，ConfigForm 是唯一读写入口。界面将编辑保留在草稿中，保存时以原 revision 提交一组 changed-field 操作，冲突或失败保留草稿。模型来自 remote.session.modelCatalog，不包含密钥；目录读取失败或缺少某条历史路由不删除既有选择。刷新/重启使用宿主 profile 配置，不维护浏览器私有副本。
+
 ## 打包
 
 从 0.1.1 起，仓库根清单直接声明 dsh.bundle.patch，根 cordis.patch.yml 使用 packages/host/lib 和 packages/ui/lib 的相对入口。Git 提交预构建 Host ESM 与 Client module-loader 产物，tarball 从同一根目录打包，不再单独生成另一份组合包清单。DSH/Cordis/React/Zod 全部 external，保留精确 peer/engine 兼容检查。隔离 home 放在提取 runtime 下，使插件共享宿主模块实例。

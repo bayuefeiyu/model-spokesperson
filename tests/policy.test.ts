@@ -38,3 +38,20 @@ test('capacity, FIFO scheduling, queued cancellation and failure release', async
   await assert.rejects(single.run(new AbortController().signal, async () => { throw new Error('fail'); }));
   assert.equal(await single.run(new AbortController().signal, async () => 'released'), 'released');
 });
+
+test('live concurrency changes release new slots and never overfill a reduced limit', async () => {
+  const queue = new RewriteQueue(1), signal = new AbortController().signal;
+  const started: number[] = [];
+  let releaseFirst!: () => void, releaseSecond!: () => void;
+  const first = queue.run(signal, async () => {started.push(1);await new Promise<void>(resolve=>{releaseFirst=resolve;});});
+  const second = queue.run(signal, async () => {started.push(2);await new Promise<void>(resolve=>{releaseSecond=resolve;});});
+  const third = queue.run(signal, async () => {started.push(3);});
+  await Promise.resolve();
+  assert.deepEqual(started,[1]);
+  queue.setCapacity(2); await Promise.resolve();
+  assert.deepEqual(started,[1,2]);
+  queue.setCapacity(1); releaseSecond(); await second;
+  assert.deepEqual(started,[1,2]);
+  releaseFirst(); await Promise.all([first,third]);
+  assert.deepEqual(started,[1,2,3]);
+});

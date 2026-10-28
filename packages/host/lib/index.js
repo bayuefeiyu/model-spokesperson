@@ -1,5 +1,4 @@
 // src/host.ts
-import schema from "@deepseek-ai/schemastery";
 import { BlockAssembler, createUserMessage } from "@deepseek-ai/dsh-llm";
 import { appendPluginRecord } from "@deepseek-ai/dsh-session";
 import { createHash } from "node:crypto";
@@ -55,6 +54,37 @@ var routeEquals = (a, b) => a.provider === b.provider && a.model === b.model;
 function matchRule(settings, route2) {
   return settings.enabled ? settings.rules.find((rule) => routeEquals(rule.source, route2)) : void 0;
 }
+
+// src/config.ts
+import schema from "@deepseek-ai/schemastery";
+import { isVolatile } from "@deepseek-ai/cosmokit";
+function readSettings(raw) {
+  return SettingsSchema.parse(Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, isVolatile(value) ? value.get() : value])));
+}
+var route = schema.object({ provider: schema.string().min(1).required(), model: schema.string().min(1).required() });
+var Config = schema.object({
+  enabled: schema.boolean().default(false).volatile(),
+  rules: schema.array(schema.object({ source: route.required(), writer: route.required() })).default([]).volatile(),
+  style: schema.string().max(4e3).default("\u4E2D\u6587\uFF0C\u7ED3\u8BBA\u5148\u884C\uFF0C\u5C11\u672F\u8BED\uFF0C\u5FE0\u5B9E\u4E8E\u539F\u6587\u3002").volatile(),
+  timeoutMs: schema.natural().min(1).max(3e5).default(45e3).volatile(),
+  maxConcurrentRewrites: schema.natural().min(1).max(16).default(2).volatile(),
+  maxInputChars: schema.natural().min(1).max(2e5).default(3e4).volatile(),
+  maxOutputTokens: schema.natural().min(1).max(32768).default(8192).volatile()
+});
+var standard = Config["~standard"];
+function check(result) {
+  if (result.issues) return result;
+  try {
+    readSettings(result.value);
+    return result;
+  } catch (error) {
+    return { issues: [{ message: error instanceof Error ? error.message : "\u914D\u7F6E\u65E0\u6548" }] };
+  }
+}
+Object.defineProperty(Config, "~standard", { value: { ...standard, validate(value) {
+  const result = standard.validate(value);
+  return result instanceof Promise ? result.then(check) : check(result);
+} } });
 
 // src/projection.ts
 import { pluginRecordOf } from "@deepseek-ai/dsh-session";
@@ -119,6 +149,13 @@ var RewriteQueue = class {
   }
   active = 0;
   waiting = [];
+  setCapacity(capacity) {
+    this.capacity = capacity;
+    this.drain();
+  }
+  drain() {
+    while (this.active < this.capacity && this.waiting.length) this.waiting.shift()();
+  }
   async run(signal, work) {
     signal.throwIfAborted();
     await new Promise((resolve, reject) => {
@@ -143,7 +180,7 @@ var RewriteQueue = class {
       return await work();
     } finally {
       this.active--;
-      this.waiting.shift()?.();
+      this.drain();
     }
   }
 };
@@ -159,16 +196,6 @@ var SYSTEM = `\u4F60\u662F\u6587\u5B57\u7F16\u8F91\u3002\u6A21\u578B A \u5DF2\u7
 \u53EA\u8F93\u51FA\u53EF\u5C55\u793A\u7684\u6539\u5199\u6B63\u6587\u3002\u539F\u6587\u5DF2\u7ECF\u6E05\u695A\u65F6\u5141\u8BB8\u4E0D\u6539\u3002`;
 
 // src/host.ts
-var route = schema.object({ provider: schema.string(), model: schema.string() });
-var Config = schema.object({
-  enabled: schema.boolean().default(false),
-  rules: schema.array(schema.object({ source: route, writer: route })).default([]),
-  style: schema.string().default("\u4E2D\u6587\uFF0C\u7ED3\u8BBA\u5148\u884C\uFF0C\u5C11\u672F\u8BED\uFF0C\u5FE0\u5B9E\u4E8E\u539F\u6587\u3002"),
-  timeoutMs: schema.natural().min(1).max(3e5).default(45e3),
-  maxConcurrentRewrites: schema.natural().min(1).max(16).default(2),
-  maxInputChars: schema.natural().min(1).max(2e5).default(3e4),
-  maxOutputTokens: schema.natural().min(1).max(32768).default(8192)
-});
 var inject = ["agents", "sessions", "llm", "sessionProjections"];
 function hash(text) {
   return createHash("sha256").update(text).digest("hex");
@@ -182,8 +209,10 @@ function raceAbort(promise, signal) {
   });
 }
 function apply(ctx, raw = {}) {
-  const settings = SettingsSchema.parse(raw);
-  const queue = new RewriteQueue(settings.maxConcurrentRewrites);
+  const queue = new RewriteQueue(readSettings(raw).maxConcurrentRewrites);
+  ctx.inject(["settings"], (child) => {
+    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
+  });
   const states = /* @__PURE__ */ new Map();
   const jobs = /* @__PURE__ */ new Map();
   const lifetime = new AbortController();
@@ -216,6 +245,7 @@ function apply(ctx, raw = {}) {
     }
   }
   async function rewrite(agent, attempt) {
+    const settings = attempt.policy;
     const { originalText = "" } = attempt.row;
     const timeout = new AbortController();
     const timer = setTimeout(() => timeout.abort(new Error("timeout")), settings.timeoutMs);
@@ -289,10 +319,13 @@ function apply(ctx, raw = {}) {
     });
   }
   function onFrame(agent, frame) {
-    if (!settings.enabled || !isMain(agent)) return;
+    if (!isMain(agent)) return;
     const map = states.get(agent) ?? /* @__PURE__ */ new Map();
     states.set(agent, map);
     if (frame.type === "start") {
+      const settings = readSettings(raw);
+      if (!settings.enabled) return;
+      queue.setCapacity(settings.maxConcurrentRewrites);
       const actual = agent.session.requestHeader()?.config;
       if (!actual) return;
       const rule = matchRule(settings, actual);
@@ -313,6 +346,7 @@ function apply(ctx, raw = {}) {
           status: "collecting",
           startedAt: Date.now()
         },
+        policy: settings,
         terminal: false,
         done: false,
         controller: new AbortController()
@@ -384,7 +418,7 @@ function apply(ctx, raw = {}) {
   ctx.on("agent/pre-step", async ({ agent, signal }, next) => {
     await raceAbort(Promise.all(jobs.get(agent) ?? []), signal);
     const decision = await next();
-    if (!settings.enabled || !isMain(agent) || decision.kind !== "enter" || decision.messages.length === 0) return decision;
+    if (!isMain(agent) || decision.kind !== "enter" || decision.messages.length === 0) return decision;
     const state = ctx.sessionProjections.stateOf(agent.session, PROJECTION);
     const seen = new Set(state?.synced ?? []);
     const visibleMessages = new Set(agent.session.deriveMessages().map((message) => message.id));

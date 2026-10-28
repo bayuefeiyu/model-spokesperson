@@ -22,7 +22,7 @@ Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试�
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/inspect-runtime.py --installation "G:\ai\harness\dsh desktop" --output evidence/runtime-inspection.json
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/prepare-runtime.py
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --from-default-profile web --dump-config
-rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.1.1.tgz
+rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.1.2.tgz
 rtk proxy node scripts/prepare-demo.mjs
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --port 31947 --no-open
 ```
@@ -54,3 +54,9 @@ rtk proxy node scripts/browser-e2e.mjs LOCAL_URL
 `browser-fallback.mjs LOCAL_URL` 验证 B 失败后原文回退且没有重做 A；`browser-history.mjs LOCAL_URL ready|disabled|uninstalled` 读取最近的同名测试会话，验证重启、禁用或卸载后的历史读取不增加调用。先运行 e2e 生成历史测试定位数据。不要并行提交这些浏览器脚本，以免干扰调用计数。
 
 重装同版本 tarball 时用新文件名以避免 pnpm 缓存；正式升级递增版本。检查安装/禁用/重启/卸载仅在隔离 profile 完成。真实账号接入后做小批量质量、延迟和费用验收；本次未操作日常桌面 profile、用户 .dsh 或安装包。
+
+## 前端设置回归
+
+0.1.2 使用原生 Settings 服务与 `plugins.bundle.config`。`src/config.ts` 的字段为 volatile 引用；Host 在 source attempt 开始读取设置，B 保留该次快照。不要只在插件 apply 时取值，否则界面保存后运行逻辑仍会使用旧设置。
+
+可用 `node scripts/prepare-demo.mjs spokesperson-ui --empty-settings` 创建关闭且无映射的 mock 配置，再启动该 profile。`node scripts/browser-settings.mjs LOCAL_URL spokesperson-ui` 从前端配置 A/B、保存后验证实际模型调用、关闭 B 并恢复；重启服务后加 `--verify-only` 验证持久化。脚本都通过 rtk proxy 执行，结果在 evidence/settings-ui.json、settings-restart.json 和 settings-ui.png。

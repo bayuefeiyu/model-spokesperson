@@ -3,6 +3,7 @@ import type {} from '@deepseek-ai/dsh-session-projection/types';
 
 export const RECORD = 'plugin:model-spokesperson/rewrite' as const;
 export const PROJECTION = 'modelSpokesperson' as const;
+export const SETTINGS_NS = 'model-spokesperson-host' as const;
 export const RouteSchema = z.object({ provider: z.string().min(1), model: z.string().min(1) });
 export type Route = z.infer<typeof RouteSchema>;
 export const RuleSchema = z.object({ source: RouteSchema, writer: RouteSchema });

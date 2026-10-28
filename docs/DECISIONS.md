@@ -27,3 +27,7 @@ bundle 内携带两个实现包，patch 使用相对入口。开发 root 不设 
 ## D007 仓库根与 tarball 共用组合包（2026-10-28，已采用）
 
 0.1.0 仅 staging tarball 有组合包声明，GitHub URL 读取的开发根清单没有，导致插件管理器拒绝。0.1.1 将唯一组合包清单与 patch 提升到仓库根，提交预构建文件，直接从根打包，不依赖安装时执行构建。增加官方 patch 解析回归及 GitHub URL 实装验证；原 tarball 验收不能代替仓库 URL 验收。
+
+## D008 原生插件详情配置（2026-10-28，已采用）
+
+使用 plugins.bundle.config、ConfigForm 和 volatile Config 接口，不实现自定义远程设置协议或浏览器副本。设置有 revision 冲突保护；只有保存才写 profile。A/B 从宿主模型目录选择，仍以实际 provider/model 匹配。每次 attempt 固定一份设置快照，新设置作用于后续回复，避免更新文风或路由改变进行中任务。

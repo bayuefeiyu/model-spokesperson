@@ -1,0 +1,13 @@
+{
+  "version": "0.1.2",
+  "profile": "spokesperson-ui",
+  "checks": [
+    "A/B selections stay staged until Save",
+    "native settings save persists to active profile",
+    "reload restores the selected routes and style",
+    "next answer uses the saved B, style and output budget without restart",
+    "disabling in the UI stops B on the next answer"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}

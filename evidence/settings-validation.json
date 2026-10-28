@@ -1,0 +1,76 @@
+{
+  "validationDate": "2026-10-28",
+  "version": "0.1.2",
+  "runtime": "0.2.1-rc.3",
+  "checks": {
+    "typecheck": "pass",
+    "tests": {
+      "pass": 26,
+      "fail": 0
+    },
+    "build": "pass",
+    "settings": {
+      "version": "0.1.2",
+      "profile": "spokesperson-ui",
+      "checks": [
+        "A/B selections stay staged until Save",
+        "native settings save persists to active profile",
+        "reload restores the selected routes and style",
+        "next answer uses the saved B, style and output budget without restart",
+        "disabling in the UI stops B on the next answer"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "restart": {
+      "version": "0.1.2",
+      "profile": "spokesperson-ui",
+      "checks": [
+        "saved settings survive process restart"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "chat": {
+      "runtime": "0.2.1-rc.3",
+      "browser": "headless Microsoft Edge",
+      "checks": [
+        "candidate original never displayed while pending",
+        "official reasoning disclosure remains usable",
+        "B in original row with working original disclosure",
+        "refresh replays saved rewrite with no new model calls"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    }
+  },
+  "artifact": {
+    "path": "dist/dsh-plugins-model-spokesperson-0.1.2.tgz",
+    "bytes": 41969,
+    "sha256": "fc9dc2e252f8ac45bdd14d6c5be6f496c8d87222c2cf82898196562bf91a9328",
+    "installedCodeMatches": true
+  },
+  "sourceChecksums": {
+    "src/client.ts": "5c3485f4c8617e56ed173e2e3f943aad9afcd49153b0cffb3f1be5f45c427b2c",
+    "src/config.ts": "cafa72532eaab1500d9ba0d1616ebb4ea8555ef12b92833e2b0f6936de848b3e",
+    "src/contract.ts": "2b655d9d1ed33a9c8dc76b8da149a57dab9772a1f88fd3823674f006b0b0d08a",
+    "src/host-types.ts": "27c89fd26392bebd1e5b50b918d267e6783f313f05bb7a5336017b25a647855f",
+    "src/host.ts": "d6e35a301687abf0636d1cfeb8624675150cce58f7fc7c18a8af8d9ccbcccb2b",
+    "src/policy.ts": "6bb9a90fd8a5825a5bc82b183634aa39f7e09d8b0dcbc4ab0e6d46e34045ea84",
+    "src/presentation.tsx": "f1f8f5657b6c89d4150d3c9f3ebe8d9ffb23503834cb347ce031c3c9c8622d9f",
+    "src/projection.ts": "03f48163a1707b27d5178bb431533388165b1f2768013ae7126582344928d981",
+    "src/prompt.ts": "f9fc74c09bf23f814b0404df224003989ae6f9fd02da2625463b275e7a83fd64",
+    "src/queue.ts": "94a2120f430e1caf3a2d695fdc13ba596b72606e9b10a10f656b1938a111206e",
+    "src/settings-client.ts": "abbe71eabaac24f6ce6f312b7c05193556c8eeb7a4550ccae72f5f2ed87b7505",
+    "src/settings-view.tsx": "b7d310ad0332c87f91aabfaa4bd064633b31c5cfa622dd77a14177740382b74e",
+    "tests/client.test.tsx": "4546bdcf5b735b62f357093020a217bcc76b5368fdb47c513b4d80a5340d3088",
+    "tests/distribution.test.ts": "16c3f31b9491a329f8824a17a2f08243b2369f65fdc968ea92bd87837d8137b0",
+    "tests/host.test.ts": "7e038f2ad250b150c1f94d031feb4a948b1ef0c9840d614113c3b0aa25740734",
+    "tests/policy.test.ts": "cee026b1a78792d6fb6d2c012120e7e413875239759f9927ca6a389f8267838e",
+    "tests/presentation.test.tsx": "fb157566f7ada6fe75efeae5cbd0d31a1ee20f4ab7190309b2c0dafe47fea72f",
+    "tests/settings.test.tsx": "38c80b2df77ea7f4babec0c05936daad77bc48ffee64c518c9485726d067c7f0"
+  },
+  "realModelApiCalls": 0,
+  "dailyInstallationModified": false,
+  "dailyProfileModified": false
+}

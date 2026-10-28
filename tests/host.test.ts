@@ -265,3 +265,17 @@ test('fork inherits saved presentation without a new B request or changing raw m
     assert.equal(f.adapter.calls.length, 2);
   } finally { await f.ctx.fiber.dispose(); }
 });
+
+test('turning future rewrites off still synchronizes already displayed history', async () => {
+  const f = await fixture(options => text(options.model === 'b' ? '用户已经看到的说明' : '原始说明'));
+  try {
+    await f.prompt(); await f.waitRow();
+    f.fiber.update({ enabled: false, rules: [{ source: {provider:'mock',model:'a'}, writer: {provider:'mock',model:'b'} }] });
+    await f.fiber.await();
+    await f.prompt('按你刚才的说明继续');
+    const requests = f.adapter.calls.filter(call=>call.model === 'a');
+    assert.equal(requests.length,2);
+    assert.ok(JSON.stringify(requests[1].messages).includes('用户已经看到的说明'));
+    assert.equal(f.adapter.calls.filter(call=>call.model === 'b').length,1);
+  } finally { await f.ctx.fiber.dispose(); }
+});

@@ -1,0 +1,9 @@
+{
+  "version": "0.1.2",
+  "profile": "spokesperson-ui",
+  "checks": [
+    "saved settings survive process restart"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}

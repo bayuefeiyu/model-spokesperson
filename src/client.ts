@@ -4,6 +4,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-chat/client';
 import type { StoredEntry } from '@deepseek-ai/dsh-client-ui-slots';
 import { createElement, type ComponentType } from 'react';
 import { createAssistantView, type AssistantProps } from './presentation.tsx';
+import { mountSettings } from './settings-client.ts';
 
 export const inject = ['slots'];
 const children = {
@@ -12,6 +13,7 @@ const children = {
 } as const;
 /** Wrap the live official registration; preserve all of its declared children and injected capabilities. */
 export function apply(ctx: Context) {
+  ctx.inject(['configForms', 'remote', 'remote.session'], mountSettings);
   let own: (() => void) | undefined;
   let base: StoredEntry | undefined;
   let changing = false;

@@ -1,10 +1,11 @@
 {
-  "name": "@dsh-plugins/model-spokesperson-host", "version": "0.1.1", "type": "module",
+  "name": "@dsh-plugins/model-spokesperson-host", "version": "0.1.2", "type": "module",
   "engines": { "dsh": "0.2.1-rc.3" },
   "description": "A works; B edits user-facing prose without tools",
   "main": "lib/index.js", "exports": { ".": "./lib/index.js", "./package.json": "./package.json" },
   "files": ["lib"],
   "peerDependencies": {
+    "@deepseek-ai/cosmokit": "1.8.6",
     "@deepseek-ai/cordis": "4.0.5", "@deepseek-ai/dsh-agent": "0.2.1-rc.3",
     "@deepseek-ai/dsh-session": "0.2.1-rc.3", "@deepseek-ai/dsh-llm": "0.2.1-rc.3",
     "@deepseek-ai/dsh-session-projection": "0.2.1-rc.3", "@deepseek-ai/schemastery": "3.18.5", "zod": "4.4.3"

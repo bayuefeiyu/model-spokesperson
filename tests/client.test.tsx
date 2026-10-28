@@ -17,7 +17,7 @@ test('minified registrants, authorized child delegation, late declarations and u
       return register.call(core, options, component);
     },
   };
-  apply({ slots, effect: (fn: () => () => void) => { const undo = fn(); cleanups.push(undo); return undo; } } as unknown as Context);
+  apply({ slots, inject: () => {}, effect: (fn: () => () => void) => { const undo = fn(); cleanups.push(undo); return undo; } } as unknown as Context);
   const root = register.call(core, { name: 'root', children: { 'conversation.chat.node': { kind: 'keyed', scope: 'session' } } }, () => null);
   const Default = (p: Record<string, unknown>) => <>{(p.renderSlot as (name: string) => React.ReactNode)('conversation.chat.reasoning.body')}{(p.renderSlot as (name: string) => React.ReactNode)('conversation.chat.message.images')}</>;
   const original = register.call(core, { name: 'conversation.chat.node', key: 'assistant-step', registrant: 'Gb', children: {

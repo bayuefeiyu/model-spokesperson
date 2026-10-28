@@ -1,29 +1,21 @@
 import type { Context } from '@deepseek-ai/cordis';
-import schema from '@deepseek-ai/schemastery';
 import type { Agent, AssistantStreamFrame } from '@deepseek-ai/dsh-agent';
 import { BlockAssembler, createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm';
 import { appendPluginRecord, type Session, type SessionEvent } from '@deepseek-ai/dsh-session';
 import type {} from '@deepseek-ai/dsh-session-projection';
+import type {} from '@deepseek-ai/dsh-settings';
 import { createHash } from 'node:crypto';
-import { RECORD, PROJECTION, ProjectionSchema, StateSchema, SettingsSchema, stepKey, matchRule, type Rewrite, type Settings } from './contract.ts';
+import { RECORD, PROJECTION, ProjectionSchema, StateSchema, stepKey, matchRule, type Rewrite, type Settings } from './contract.ts';
+import { readSettings, type RuntimeSettings } from './config.ts';
+export { Config } from './config.ts';
 import { foldRewrites } from './projection.ts';
 import { skipText, validateRewrite } from './policy.ts';
 import { RewriteQueue } from './queue.ts';
 import { SYSTEM } from './prompt.ts';
 
-const route = schema.object({ provider: schema.string(), model: schema.string() });
-export const Config = schema.object({
-  enabled: schema.boolean().default(false),
-  rules: schema.array(schema.object({ source: route, writer: route })).default([]),
-  style: schema.string().default('中文，结论先行，少术语，忠实于原文。'),
-  timeoutMs: schema.natural().min(1).max(300000).default(45000),
-  maxConcurrentRewrites: schema.natural().min(1).max(16).default(2),
-  maxInputChars: schema.natural().min(1).max(200000).default(30000),
-  maxOutputTokens: schema.natural().min(1).max(32768).default(8192),
-});
 export const inject = ['agents', 'sessions', 'llm', 'sessionProjections'];
 
-interface Attempt { row: Rewrite; terminal: boolean; done: boolean; controller: AbortController }
+interface Attempt { row: Rewrite; policy: Settings; terminal: boolean; done: boolean; controller: AbortController }
 function hash(text: string) { return createHash('sha256').update(text).digest('hex'); }
 function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) return Promise.reject(signal.reason);
@@ -35,9 +27,11 @@ function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
 }
 
 /** Host owns editing only; neither A's stream nor its request objects are transformed. */
-export function apply(ctx: Context, raw: Partial<Settings> = {}) {
-  const settings = SettingsSchema.parse(raw);
-  const queue = new RewriteQueue(settings.maxConcurrentRewrites);
+export function apply(ctx: Context, raw: RuntimeSettings = {}) {
+  const queue = new RewriteQueue(readSettings(raw).maxConcurrentRewrites);
+  ctx.inject(['settings'], child => {
+    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
+  });
   const states = new Map<Agent, Map<string, Attempt>>();
   const jobs = new Map<Agent, Set<Promise<void>>>();
   const lifetime = new AbortController();
@@ -69,6 +63,7 @@ export function apply(ctx: Context, raw: Partial<Settings> = {}) {
     }
   }
   async function rewrite(agent: Agent, attempt: Attempt) {
+    const settings = attempt.policy;
     const { originalText = '' } = attempt.row;
     const timeout = new AbortController();
     const timer = setTimeout(() => timeout.abort(new Error('timeout')), settings.timeoutMs);
@@ -133,10 +128,13 @@ export function apply(ctx: Context, raw: Partial<Settings> = {}) {
     void contained.finally(() => { pending.delete(contained); if (!pending.size) jobs.delete(agent); });
   }
   function onFrame(agent: Agent, frame: AssistantStreamFrame) {
-    if (!settings.enabled || !isMain(agent)) return;
+    if (!isMain(agent)) return;
     const map = states.get(agent) ?? new Map<string, Attempt>();
     states.set(agent, map);
     if (frame.type === 'start') {
+      const settings = readSettings(raw);
+      if (!settings.enabled) return;
+      queue.setCapacity(settings.maxConcurrentRewrites);
       const actual = agent.session.requestHeader()?.config;
       if (!actual) return;
       const rule = matchRule(settings, actual);
@@ -147,7 +145,7 @@ export function apply(ctx: Context, raw: Partial<Settings> = {}) {
         row: { schemaVersion: 1, policyVersion: 1, promptVersion: 1, sessionId: agent.session.id,
           turn: frame.turn, step: frame.step, attemptId: frame.attemptId,
           source: rule.source, writer: rule.writer, status: 'collecting', startedAt: Date.now() },
-        terminal: false, done: false, controller: new AbortController(),
+        policy: settings, terminal: false, done: false, controller: new AbortController(),
       };
       map.set(key, attempt);
       save(agent.session, attempt.row);
@@ -208,7 +206,8 @@ export function apply(ctx: Context, raw: Partial<Settings> = {}) {
   ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
     await raceAbort(Promise.all(jobs.get(agent) ?? []), signal);
     const decision = await next();
-    if (!settings.enabled || !isMain(agent) || decision.kind !== 'enter' || decision.messages.length === 0) return decision;
+    // Historical display drafts remain visible when future rewrites are off.
+    if (!isMain(agent) || decision.kind !== 'enter' || decision.messages.length === 0) return decision;
     const state = ctx.sessionProjections.stateOf(agent.session, PROJECTION);
     const seen = new Set(state?.synced ?? []);
     const visibleMessages = new Set<string>(agent.session.deriveMessages().map(message => message.id));

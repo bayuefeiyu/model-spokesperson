@@ -25,7 +25,7 @@ __export(client_exports, {
   inject: () => inject
 });
 module.exports = __toCommonJS(client_exports);
-var import_react2 = require("react");
+var import_react4 = require("react");
 
 // src/presentation.tsx
 var import_react = require("react");
@@ -33,6 +33,7 @@ var import_react = require("react");
 // src/contract.ts
 var import_zod = require("zod");
 var PROJECTION = "modelSpokesperson";
+var SETTINGS_NS = "model-spokesperson-host";
 var RouteSchema = import_zod.z.object({ provider: import_zod.z.string().min(1), model: import_zod.z.string().min(1) });
 var RuleSchema = import_zod.z.object({ source: RouteSchema, writer: RouteSchema });
 var SettingsSchema = import_zod.z.object({
@@ -83,10 +84,10 @@ var hint = { fontFamily: "system-ui, sans-serif", fontSize: 12, color: "var(--ds
 function presentation(row, props) {
   const data = props.node.data;
   if (!row || row.turn !== data.turn || row.step !== data.step) return "original";
-  const text = data.blocks.flatMap((block) => block.kind === "text" ? [block.text] : []).join("");
+  const text2 = data.blocks.flatMap((block) => block.kind === "text" ? [block.text] : []).join("");
   if (data.status === "interrupted" || data.blocks.some((block) => block.kind === "tool-call")) return "original";
   if (row.status === "collecting") return "pending";
-  if (data.status !== "running" && (row.originalMessageId !== data.finalNode?.messageId || row.originalText !== text)) return "original";
+  if (data.status !== "running" && (row.originalMessageId !== data.finalNode?.messageId || row.originalText !== text2)) return "original";
   if (row.status === "rewriting") return "pending";
   if (row.status === "ready" && row.rewrittenText) return "ready";
   if (row.status === "fallback" || row.status === "cancelled") return "fallback";
@@ -146,6 +147,189 @@ function createAssistantView(Default) {
   };
 }
 
+// src/settings-client.ts
+var import_react3 = require("react");
+
+// src/settings-view.tsx
+var import_react2 = require("react");
+var import_jsx_runtime2 = require("react/jsx-runtime");
+var keyOf = (route) => route.provider && route.model ? JSON.stringify([route.provider, route.model]) : "";
+var fromKey = (key) => key ? { provider: JSON.parse(key)[0], model: JSON.parse(key)[1] } : { provider: "", model: "" };
+var text = { fontFamily: "system-ui, sans-serif", fontSize: 13, lineHeight: 1.6, color: "var(--dsw-alias-label-primary, #1e293b)" };
+var control = { font: "inherit", color: "inherit", background: "var(--dsw-alias-background-primary, transparent)", border: "1px solid var(--dsw-alias-border-l1, #cbd5e1)", borderRadius: 8, padding: "8px 10px", width: "100%", boxSizing: "border-box" };
+var button = { ...control, width: "auto", cursor: "pointer" };
+var note = { color: "var(--dsw-alias-label-secondary, #64748b)", margin: "4px 0 12px" };
+function settingsError(value) {
+  const result = SettingsSchema.safeParse(value);
+  if (result.success) return;
+  const issue = result.error.issues[0];
+  if (issue.path[0] === "rules") return value.rules.some((rule) => !keyOf(rule.source) || !keyOf(rule.writer)) ? "\u8BF7\u4E3A\u6BCF\u7EC4\u6620\u5C04\u9009\u62E9\u5B8C\u6574\u7684 A \u548C B \u6A21\u578B\u3002" : issue.message;
+  return issue.path[0] === "style" ? "\u8868\u8FBE\u504F\u597D\u4E0D\u80FD\u8D85\u8FC7 4000 \u5B57\u3002" : "\u8BF7\u68C0\u67E5\u9AD8\u7EA7\u8BBE\u7F6E\u7684\u6570\u503C\u8303\u56F4\u3002";
+}
+function SettingsView({ form, loadCatalog }) {
+  const subscribe = (0, import_react2.useCallback)((listener) => form.subscribe(listener), [form]);
+  const getSnapshot = (0, import_react2.useCallback)(() => form.getSnapshot(), [form]);
+  const snapshot = (0, import_react2.useSyncExternalStore)(subscribe, getSnapshot);
+  const current = (0, import_react2.useMemo)(() => SettingsSchema.parse(snapshot.value ?? {}), [snapshot.value]);
+  const [draft, setDraft] = (0, import_react2.useState)();
+  const [saving, setSaving] = (0, import_react2.useState)(false);
+  const [message, setMessage] = (0, import_react2.useState)("");
+  const [error, setError] = (0, import_react2.useState)("");
+  const [catalog, setCatalog] = (0, import_react2.useState)();
+  const [catalogStatus, setCatalogStatus] = (0, import_react2.useState)("loading");
+  const [refresh, setRefresh] = (0, import_react2.useState)(0);
+  const alive = (0, import_react2.useRef)(true);
+  (0, import_react2.useEffect)(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  (0, import_react2.useEffect)(() => {
+    let active = true;
+    setCatalogStatus("loading");
+    void Promise.resolve().then(loadCatalog).then((value2) => {
+      if (active) {
+        setCatalog(value2);
+        setCatalogStatus("ready");
+      }
+    }, () => {
+      if (active) setCatalogStatus("error");
+    });
+    return () => {
+      active = false;
+    };
+  }, [loadCatalog, refresh]);
+  const value = draft?.settings ?? current;
+  const dirty = JSON.stringify(value) !== JSON.stringify(current);
+  const conflict = dirty && draft?.revision !== snapshot.revision;
+  const invalid = settingsError(value);
+  const writable = snapshot.status === "ready" && snapshot.writable && !saving;
+  function edit(change) {
+    setDraft((previous) => ({ settings: change(previous?.settings ?? structuredClone(current)), revision: previous ? previous.revision : snapshot.revision }));
+    setMessage("");
+    setError("");
+  }
+  async function save(event) {
+    event.preventDefault();
+    if (!writable || !dirty || !draft || invalid || conflict) return;
+    const desired = SettingsSchema.parse(value);
+    const ops = Object.keys(desired).filter((key) => JSON.stringify(desired[key]) !== JSON.stringify(current[key])).map((key) => ({ op: "set", path: [key], value: desired[key] }));
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      const accepted = await form.mutate(ops, draft.revision);
+      if (!alive.current) return;
+      if (accepted) {
+        setDraft(void 0);
+        setMessage("\u5DF2\u4FDD\u5B58\uFF0C\u4E0B\u4E00\u6B21\u56DE\u590D\u5C06\u4F7F\u7528\u65B0\u8BBE\u7F6E\u3002");
+      } else setError("\u4FDD\u5B58\u672A\u6210\u529F\uFF0C\u4FEE\u6539\u4ECD\u5DF2\u4FDD\u7559\u3002\u8BF7\u68C0\u67E5\u662F\u5426\u6709\u5176\u4ED6\u9875\u9762\u6216\u914D\u7F6E\u6587\u4EF6\u540C\u65F6\u66F4\u65B0\u3002");
+    } catch {
+      if (alive.current) setError("\u4FDD\u5B58\u5931\u8D25\uFF0C\u4FEE\u6539\u4ECD\u5DF2\u4FDD\u7559\u3002\u8BF7\u68C0\u67E5\u8FDE\u63A5\u540E\u91CD\u8BD5\u3002");
+    } finally {
+      if (alive.current) setSaving(false);
+    }
+  }
+  if (snapshot.status !== "ready") return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", style: text, children: snapshot.status === "loading" ? "\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u5634\u66FF\u8BBE\u7F6E\u2026" : "\u914D\u7F6E\u6682\u4E0D\u53EF\u7528\uFF0C\u8BF7\u786E\u8BA4 Host \u7EC4\u4EF6\u5DF2\u542F\u7528\u3002" });
+  const groups = catalog?.groups ?? [];
+  function selector(route, label, change) {
+    const found = groups.some((group) => group.id === route.provider && group.models.some((model) => model.id === route.model));
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
+      label,
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("select", { "aria-label": label, style: control, value: keyOf(route), onChange: (event) => change(fromKey(event.target.value)), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9\u6A21\u578B" }),
+        keyOf(route) && !found && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("option", { value: keyOf(route), children: [
+          route.provider,
+          " / ",
+          route.model,
+          "\uFF08\u5F53\u524D\u4E0D\u5728\u6A21\u578B\u5217\u8868\u4E2D\uFF09"
+        ] }),
+        groups.map((group) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("optgroup", { label: `${group.name} \xB7 ${group.id}`, children: group.models.map((model) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("option", { value: keyOf({ provider: group.id, model: model.id }), children: [
+          group.name,
+          " / ",
+          model.name,
+          model.name !== model.id ? ` \xB7 ${model.id}` : ""
+        ] }, model.id)) }, group.id))
+      ] })
+    ] });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("form", { "aria-label": "\u6A21\u578B\u5634\u66FF\u8BBE\u7F6E", noValidate: true, onSubmit: (event) => void save(event), style: { ...text, padding: "18px 0", display: "grid", gap: 16 }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h3", { style: { margin: 0, fontSize: 16 }, children: "\u6A21\u578B\u4E0E\u8868\u8FBE" }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "A \u8D1F\u8D23\u601D\u8003\u548C\u6267\u884C\u5DE5\u4F5C\uFF0CB \u53EA\u6574\u7406\u9762\u5411\u7528\u6237\u7684\u6587\u5B57\u3002" })
+    ] }),
+    !snapshot.writable && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", style: note, children: "\u5F53\u524D\u90E8\u7F72\u7684\u914D\u7F6E\u4E3A\u53EA\u8BFB\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("fieldset", { disabled: !writable, style: { border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 16 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "flex", gap: 8, alignItems: "center" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "checkbox", checked: value.enabled, onChange: (event) => edit((settings) => ({ ...settings, enabled: event.target.checked })) }),
+        "\u5F00\u542F\u6587\u5B57\u6574\u7406"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: note, children: [
+          catalogStatus === "loading" ? "\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u5217\u8868\u2026" : catalogStatus === "error" ? "\u6A21\u578B\u5217\u8868\u8BFB\u53D6\u5931\u8D25\uFF0C\u5DF2\u4FDD\u7559\u5F53\u524D\u914D\u7F6E\u3002" : groups.length === 0 ? "\u6CA1\u6709\u53EF\u9009\u6A21\u578B\uFF0C\u8BF7\u5148\u5728 DSH \u7684\u201C\u8BBE\u7F6E \u2192 \u6A21\u578B\u201D\u4E2D\u914D\u7F6E\u3002" : "\u4ECE DSH \u5DF2\u914D\u7F6E\u7684\u6A21\u578B\u4E2D\u9009\u62E9\u3002",
+          catalog?.failures.length ? " \u90E8\u5206\u63D0\u4F9B\u65B9\u6682\u65F6\u4E0D\u53EF\u7528\uFF0C\u5DF2\u6709\u9009\u62E9\u4E0D\u4F1A\u88AB\u6E05\u9664\u3002" : ""
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", style: button, onClick: () => setRefresh((value2) => value2 + 1), disabled: catalogStatus === "loading", children: "\u5237\u65B0\u6A21\u578B\u5217\u8868" })
+      ] }),
+      value.rules.map((rule, index) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("fieldset", { style: { border: "1px solid var(--dsw-alias-border-l1, #e2e8f0)", borderRadius: 10, padding: 14, margin: 0, minWidth: 0 }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("legend", { children: [
+          "\u6A21\u578B\u6620\u5C04 ",
+          index + 1
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }, children: [
+          selector(rule.source, `\u7B2C ${index + 1} \u7EC4 A \u6A21\u578B\uFF08\u5B8C\u6210\u5DE5\u4F5C\uFF09`, (route) => edit((settings) => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, source: route } : item) }))),
+          selector(rule.writer, `\u7B2C ${index + 1} \u7EC4 B \u6A21\u578B\uFF08\u6574\u7406\u8868\u8FBE\uFF09`, (route) => edit((settings) => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, writer: route } : item) })))
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", style: { ...button, marginTop: 12 }, onClick: () => edit((settings) => ({ ...settings, rules: settings.rules.filter((_, i) => i !== index) })), children: [
+          "\u5220\u9664\u7B2C ",
+          index + 1,
+          " \u7EC4\u6620\u5C04"
+        ] })
+      ] }, index)),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", style: button, onClick: () => edit((settings) => ({ ...settings, rules: [...settings.rules, { source: { provider: "", model: "" }, writer: { provider: "", model: "" } }] })), children: "\u6DFB\u52A0\u6A21\u578B\u6620\u5C04" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
+        "\u8868\u8FBE\u504F\u597D",
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("textarea", { "aria-label": "\u8868\u8FBE\u504F\u597D", rows: 3, style: control, value: value.style, onChange: (event) => edit((settings) => ({ ...settings, style: event.target.value })) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("summary", { style: { cursor: "pointer" }, children: "\u9AD8\u7EA7\u8BBE\u7F6E" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 12 }, children: [{ key: "timeoutMs", label: "\u6574\u7406\u8D85\u65F6\uFF08\u79D2\uFF09", scale: 1e3, min: 1e-3, max: 300 }, { key: "maxConcurrentRewrites", label: "\u540C\u65F6\u6574\u7406\u6570\u91CF", scale: 1, min: 1, max: 16 }, { key: "maxInputChars", label: "\u6700\u5927\u8F93\u5165\u5B57\u7B26\u6570", scale: 1, min: 1, max: 2e5 }, { key: "maxOutputTokens", label: "\u6700\u5927\u8F93\u51FA tokens", scale: 1, min: 1, max: 32768 }].map((field) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
+          field.label,
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": field.label, type: "number", step: field.key === "timeoutMs" ? "any" : 1, min: field.min, max: field.max, style: control, value: value[field.key] / field.scale, onChange: (event) => edit((settings) => ({ ...settings, [field.key]: Number(event.target.value) * field.scale })) })
+        ] }, field.key)) })
+      ] })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u804A\u5929\u65F6\u4ECD\u5728\u8F93\u5165\u6846\u9009\u62E9 A\uFF0C\u8FD9\u91CC\u4E0D\u4F1A\u81EA\u52A8\u5207\u6362\u4F1A\u8BDD\u6A21\u578B\u3002\u4FDD\u5B58\u53EA\u5F71\u54CD\u540E\u7EED\u56DE\u590D\uFF0C\u8FDB\u884C\u4E2D\u7684\u6574\u7406\u4FDD\u7559\u539F\u8BBE\u7F6E\u3002B \u4F1A\u589E\u52A0\u4E00\u6B21\u6A21\u578B\u8C03\u7528\u548C\u7B49\u5F85\u65F6\u95F4\uFF1B\u6CA1\u6709\u5339\u914D\u5230 A \u7684\u6A21\u578B\u76F4\u63A5\u663E\u793A\u3002" }),
+    invalid && dirty && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", style: { margin: 0, color: "var(--dsw-alias-state-error-primary, #b91c1c)" }, children: invalid }),
+    conflict && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: "\u8BBE\u7F6E\u5DF2\u5728\u5176\u4ED6\u9875\u9762\u6216\u914D\u7F6E\u6587\u4EF6\u4E2D\u6539\u53D8\u3002\u8BF7\u5148\u653E\u5F03\u5F53\u524D\u4FEE\u6539\uFF0C\u8BFB\u53D6\u6700\u65B0\u503C\u540E\u518D\u4FDD\u5B58\u3002" }),
+    error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: error }),
+    message && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", style: { margin: 0 }, children: message }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: 10 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "submit", style: { ...button, background: "var(--dsw-alias-fill-brand-primary, #2563eb)", color: "#fff", opacity: !writable || !dirty || !!invalid || conflict ? 0.5 : 1 }, disabled: !writable || !dirty || !!invalid || conflict, children: saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u8BBE\u7F6E" }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", style: { ...button, opacity: !dirty || saving ? 0.5 : 1 }, disabled: !dirty || saving, onClick: () => {
+        setDraft(void 0);
+        setMessage("");
+        setError("");
+      }, children: "\u653E\u5F03\u4FEE\u6539" })
+    ] })
+  ] });
+}
+
+// src/settings-client.ts
+function mountSettings(ctx) {
+  const form = ctx.configForms.get(SETTINGS_NS);
+  const loadCatalog = async () => {
+    const result = await ctx.remote.session.modelCatalog();
+    if (!result.ok) throw new Error("\u6A21\u578B\u5217\u8868\u6682\u4E0D\u53EF\u7528");
+    return result.value;
+  };
+  ctx.effect(() => ctx.configForms.whileServed([SETTINGS_NS], () => ctx.slots.inject("plugins.bundle.config", () => ctx.slots.register({
+    name: "plugins.bundle.config",
+    key: "@dsh-plugins/model-spokesperson"
+  }, () => (0, import_react3.createElement)(SettingsView, { form, loadCatalog })))));
+}
+
 // src/client.ts
 var inject = ["slots"];
 var children = {
@@ -153,6 +337,7 @@ var children = {
   "conversation.chat.message.images": "model-spokesperson.message.images"
 };
 function apply(ctx) {
+  ctx.inject(["configForms", "remote", "remote.session"], mountSettings);
   let own;
   let base;
   let changing = false;
@@ -167,7 +352,7 @@ function apply(ctx) {
       base = original;
       if (!original) return;
       const Default = original.component;
-      const Delegate = (props) => (0, import_react2.createElement)(Default, {
+      const Delegate = (props) => (0, import_react4.createElement)(Default, {
         ...props,
         renderSlot: (key, owner, options) => props.renderSlot(children[key], owner, options)
       });
