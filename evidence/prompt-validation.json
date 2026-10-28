@@ -52,5 +52,31 @@
   },
   "realModelApiCalls": 0,
   "dailyInstallationModified": false,
-  "dailyProfileModified": false
+  "dailyProfileModified": false,
+  "restart": {
+    "version": "0.2.1",
+    "profile": "spokesperson-report",
+    "checks": [
+      "custom multiline prompts survive process restart/reinstallation"
+    ],
+    "pageErrors": [],
+    "realApiCalls": 0
+  },
+  "githubSource": {
+    "verified": true,
+    "url": "https://github.com/bayuefeiyu/model-spokesperson",
+    "testedCommit": "f6800d555f64a68c4d8c3fc2ce8bb11d3c73774c",
+    "customPromptsPreserved": true,
+    "manager": {
+      "version": "0.2.1",
+      "source": "github",
+      "bundleRecognized": true,
+      "components": [
+        "model-spokesperson-host",
+        "model-spokesperson-ui"
+      ],
+      "bundleDisabledAndReenabled": true,
+      "pageErrors": []
+    }
+  }
 }

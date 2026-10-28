@@ -1,0 +1,9 @@
+{
+  "version": "0.2.1",
+  "profile": "spokesperson-report",
+  "checks": [
+    "custom multiline prompts survive process restart/reinstallation"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}
