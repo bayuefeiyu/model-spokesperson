@@ -20,6 +20,8 @@
 
 机器记录见 retry-validation.json、retry-browser.json、retry-restart.json；按钮截图为 retry-button.png。GitHub 分发与发行包验证写入机器记录。
 
+已发布 [v0.2.2 预发行版](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.2.2)，标签提交 66eb4c82768a22dadafc265bfa7377d7ed2bc07a。安装包 71692 字节，SHA-256 为 `83c48b24e28b5a32ab76ba0a3f178f3572042e0b6077427d86cde9073ccbc010`。安装包与 SHA256SUMS.txt 均通过 GitHub API 下载至内存复核，摘要与本地一致，仓库保持私有。
+
 ## 边界
 
 旧 0.1.x 润色记录没有独立报告上下文，不提供本入口。原文已删除/重生成或材料不可恢复时不能重试。真实 API 断网、限额和模型语义质量未验证；mock 证明流程、调用数量和数据保存行为。分叉的当前会话身份有组件测试，完整分叉/删除/多客户端浏览器矩阵仍未扩展。手动重试会增加实际新调用的费用；未增加自动重试。
