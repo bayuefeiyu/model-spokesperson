@@ -1,0 +1,56 @@
+{
+  "validationDate": "2026-10-28",
+  "version": "0.2.1",
+  "runtime": "0.2.1-rc.3",
+  "checks": {
+    "typecheck": "pass",
+    "tests": {
+      "pass": 38,
+      "fail": 0
+    },
+    "build": "pass",
+    "settings": {
+      "version": "0.2.1",
+      "profile": "spokesperson-report",
+      "checks": [
+        "legacy profile preloads both complete default prompts",
+        "multiline edits remain staged until Save and persist after reload",
+        "saved prompts replace complete stage systems in actual B calls without restart",
+        "per-stage Restore remains staged until Save; defaults persist after reload"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    }
+  },
+  "artifact": {
+    "path": "dist/dsh-plugins-model-spokesperson-0.2.1.tgz",
+    "bytes": 56638,
+    "sha256": "2f734f0948650750cf21017a324208c5dc0350b0505bc285c3bcc70c04d0a530",
+    "installedCodeMatches": true
+  },
+  "sourceChecksums": {
+    "src/client.ts": "5c3485f4c8617e56ed173e2e3f943aad9afcd49153b0cffb3f1be5f45c427b2c",
+    "src/config.ts": "97ba8b7f1bcc08bd26d436230d83dc555c3ffaf1785391bf9007bc31b199df6b",
+    "src/contract.ts": "b1a5b7bbd5648ccb29d172d3f40b40d4a28d8dc5fc604248f5b3ea2299ac60f8",
+    "src/host-types.ts": "27c89fd26392bebd1e5b50b918d267e6783f313f05bb7a5336017b25a647855f",
+    "src/host.ts": "0ac86d33fbdb19eb6169b2ed59180aaf54d7191d8c5bf81298ef82989cb9c83e",
+    "src/policy.ts": "eee21ea8edd84662fcd6a6cd703b8ba2a47e1c9342ba50de80fa647861e67b56",
+    "src/presentation.tsx": "06e0d0fee66832b73ca9ec1677033adf1d5d9c2f34a7326856dc11fcaa838e3e",
+    "src/projection.ts": "03f48163a1707b27d5178bb431533388165b1f2768013ae7126582344928d981",
+    "src/prompt.ts": "310eba8af446d357a8ca15a47a625cb7faf61a33c1f32e057d5e581b2b8a8082",
+    "src/queue.ts": "94a2120f430e1caf3a2d695fdc13ba596b72606e9b10a10f656b1938a111206e",
+    "src/settings-client.ts": "abbe71eabaac24f6ce6f312b7c05193556c8eeb7a4550ccae72f5f2ed87b7505",
+    "src/settings-view.tsx": "98db881d427a9f1dae8fb16a4c064f6b73e26251d7c01cdb46d5f22eea2b9a13",
+    "src/work-context.ts": "d949f53486694417a7201abe70eeeca06ba8e43a51d083d964801bad80336647",
+    "tests/client.test.tsx": "4546bdcf5b735b62f357093020a217bcc76b5368fdb47c513b4d80a5340d3088",
+    "tests/distribution.test.ts": "16c3f31b9491a329f8824a17a2f08243b2369f65fdc968ea92bd87837d8137b0",
+    "tests/host.test.ts": "b8816409366aa40c920b403133c3bc23dc849410823a2e9cda5334b82b37af2a",
+    "tests/policy.test.ts": "728c833eb51b5279f3fb595ac8f0980c975967554e1385586d550495dae947b7",
+    "tests/presentation.test.tsx": "eb5671d17f13c38cc06609a7fe0a7d0c5493e5e7b54cb9a778a4f2f2a526e95b",
+    "tests/settings.test.tsx": "74a561639fc68ecd5d2709814f401cc43e374b60c18f21c4df017857427057a8",
+    "tests/work-context.test.ts": "00bed1faa4347d6445b63a55883c8d267f8feacb6c6b5f9a6e18bc3e712a650d"
+  },
+  "realModelApiCalls": 0,
+  "dailyInstallationModified": false,
+  "dailyProfileModified": false
+}

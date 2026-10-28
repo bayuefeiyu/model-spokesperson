@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExtern
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types';
 import { SettingsSchema, type Settings, type Route } from './contract.ts';
+import { DRAFT_SYSTEM, REVIEW_SYSTEM } from './prompt.ts';
 
 export interface SettingsViewProps { form: ConfigForm<Settings>; loadCatalog: () => Promise<ModelCatalog> }
 const keyOf = (route: Route) => route.provider && route.model ? JSON.stringify([route.provider, route.model]) : '';
@@ -16,6 +17,7 @@ export function settingsError(value: Settings): string | undefined {
   if (result.success) return;
   const issue = result.error.issues[0];
   if (issue.path[0] === 'rules') return value.rules.some(rule => !keyOf(rule.source) || !keyOf(rule.writer)) ? '请为每组映射选择完整的 A 和 B 模型。' : issue.message;
+  if (issue.path[0] === 'draftPrompt' || issue.path[0] === 'reviewPrompt') return issue.message;
   return issue.path[0] === 'style' ? '表达偏好不能超过 4000 字。' : '请检查高级设置的数值范围。';
 }
 
@@ -94,6 +96,15 @@ export function SettingsView({ form, loadCatalog }: SettingsViewProps) {
       </fieldset>)}
       <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, rules: [...settings.rules, { source: { provider: '', model: '' }, writer: { provider: '', model: '' } }] }))}>添加模型映射</button></div>
       <label style={{ display: 'grid', gap: 5 }}>表达偏好<textarea aria-label="表达偏好" rows={3} style={control} value={value.style} onChange={event => edit(settings => ({ ...settings, style: event.target.value }))} /></label>
+      <details><summary style={{ cursor: 'pointer' }}>提示词设置</summary><div style={{ display: 'grid', gap: 14, marginTop: 12 }}>
+        <p style={note}>以下是发送给 B 的完整阶段提示词，可直接修改。每次调用还会在末尾附加上面的“表达偏好”。恢复默认只修改当前草稿，点击“保存设置”后生效。</p>
+        <label style={{ display: 'grid', gap: 5 }}>独立起草提示词<textarea aria-label="独立起草提示词" rows={12} spellCheck={false} style={{ ...control, resize: 'vertical' }} value={value.draftPrompt} onChange={event => edit(settings => ({ ...settings, draftPrompt: event.target.value }))} /></label>
+        <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, draftPrompt: DRAFT_SYSTEM }))}>恢复默认起草提示词</button></div>
+        <p style={note}>起草输入为 JSON：userQuestion 是用户本次要求，workContext 是 A 写本次报告前的工作材料；不包含 A 本次成稿。</p>
+        <label style={{ display: 'grid', gap: 5 }}>核对完善提示词<textarea aria-label="核对完善提示词" rows={14} spellCheck={false} style={{ ...control, resize: 'vertical' }} value={value.reviewPrompt} onChange={event => edit(settings => ({ ...settings, reviewPrompt: event.target.value }))} /></label>
+        <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, reviewPrompt: REVIEW_SYSTEM }))}>恢复默认核对提示词</button></div>
+        <p style={note}>核对输入还包含 ownDraft（B 自己的上一稿）、sourceReport（A 的参考报告）、reviewRound（当前核对轮次）。这些字段由插件提供，无需填写占位符。核对轮数为 0 时不使用核对提示词。</p>
+      </div></details>
       <label style={{ display: 'grid', gap: 5 }}>核对轮数<input aria-label="核对轮数" type="number" min={0} step={1} style={control} value={value.reviewRounds} onChange={event => edit(settings => ({ ...settings, reviewRounds: Number(event.target.value) }))} /><span style={note}>先独立起草，再核对 {value.reviewRounds} 轮，共调用 B {value.reviewRounds + 1} 次。设为 0 时只独立起草，不向 B 提供 A 本次报告。每轮核对都在 B 自己的上一稿上完善。</span></label>
       <details><summary style={{ cursor: 'pointer' }}>高级设置</summary><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginTop: 12 }}>
         {([{ key: 'timeoutMs', label: '完整流程超时（秒，0 不限）', scale: 1000, min: 0, max: 2147483.647 }, { key: 'maxConcurrentRewrites', label: '同时处理数量', scale: 1, min: 1, max: 16 }, { key: 'maxInputChars', label: '每次输入字符上限（0 不限）', scale: 1, min: 0, max: Number.MAX_SAFE_INTEGER }, { key: 'maxOutputTokens', label: '每次输出 tokens（0 跟随模型）', scale: 1, min: 0, max: Number.MAX_SAFE_INTEGER }] as const).map(field => <label key={field.key} style={{ display: 'grid', gap: 5 }}>{field.label}<input aria-label={field.label} type="number" step={field.key === 'timeoutMs' ? 'any' : 1} min={field.min} max={field.max} style={control} value={value[field.key] / field.scale} onChange={event => edit(settings => ({ ...settings, [field.key]: Number(event.target.value) * field.scale }))} /></label>)}

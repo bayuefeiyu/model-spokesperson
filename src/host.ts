@@ -11,7 +11,6 @@ export { Config } from './config.ts';
 import { foldRewrites } from './projection.ts';
 import { skipText, validateRewrite, validateReport } from './policy.ts';
 import { RewriteQueue } from './queue.ts';
-import { DRAFT_SYSTEM, REVIEW_SYSTEM } from './prompt.ts';
 import { captureWorkContext, type WorkContext } from './work-context.ts';
 
 export const inject = ['agents', 'sessions', 'llm', 'sessionProjections'];
@@ -90,7 +89,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
         for (let round = 0; round <= settings.reviewRounds; round++) {
           signal.throwIfAborted();
           const kind = round === 0 ? 'draft' : 'review';
-          const system = (round === 0 ? DRAFT_SYSTEM : REVIEW_SYSTEM) + '\n表达偏好：' + settings.style;
+          const system = (round === 0 ? settings.draftPrompt : settings.reviewPrompt) + '\n表达偏好：' + settings.style;
           // A's final report is introduced only after B has produced its independent draft.
           const input = JSON.stringify(round === 0 ? context : { ...context, ownDraft, sourceReport: originalText, reviewRound: round });
           if (settings.maxInputChars > 0 && system.length + input.length > settings.maxInputChars) throw new Error('input-limit');

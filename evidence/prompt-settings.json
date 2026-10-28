@@ -1,0 +1,12 @@
+{
+  "version": "0.2.1",
+  "profile": "spokesperson-report",
+  "checks": [
+    "legacy profile preloads both complete default prompts",
+    "multiline edits remain staged until Save and persist after reload",
+    "saved prompts replace complete stage systems in actual B calls without restart",
+    "per-stage Restore remains staged until Save; defaults persist after reload"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}

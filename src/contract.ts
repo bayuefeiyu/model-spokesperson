@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type {} from '@deepseek-ai/dsh-session-projection/types';
+import { DRAFT_SYSTEM, REVIEW_SYSTEM } from './prompt.ts';
 
 export const RECORD = 'plugin:model-spokesperson/rewrite' as const;
 export const PROJECTION = 'modelSpokesperson' as const;
@@ -11,6 +12,8 @@ export const SettingsSchema = z.object({
   enabled: z.boolean().default(false),
   rules: z.array(RuleSchema).default([]),
   style: z.string().max(4000).default('中文，结论先行，少术语，清楚自然，事实准确。'),
+  draftPrompt: z.string().refine(value => value.trim().length > 0, '独立起草提示词不能为空。').default(DRAFT_SYSTEM),
+  reviewPrompt: z.string().refine(value => value.trim().length > 0, '核对完善提示词不能为空。').default(REVIEW_SYSTEM),
   reviewRounds: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(1),
   timeoutMs: z.number().int().min(0).max(2147483647).default(0),
   maxConcurrentRewrites: z.number().int().min(1).max(16).default(2),

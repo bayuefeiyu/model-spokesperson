@@ -1,6 +1,8 @@
 # 开发交接
 
-当前版本 0.2.0，针对 DSH 0.2.1-rc.3。安装包 dist/dsh-plugins-model-spokesperson-0.2.0.tgz；使用步骤见 README，新阶段验收见 evidence/report-validation.md。前端插件详情页可配置 A/B、开关、文风、核对轮数和用户预算。0.1.x 验收文档保留作历史证据。
+当前版本 0.2.1，针对 DSH 0.2.1-rc.3。安装包 dist/dsh-plugins-model-spokesperson-0.2.1.tgz；使用步骤见 README。独立报告流程见 evidence/report-validation.md，提示词设置见 evidence/prompt-validation.md。前端插件详情页可配置 A/B、开关、文风、完整的起草/核对提示词、核对轮数和用户预算。旧版本验收文档保留作历史证据。
+
+0.2.1 的 draftPrompt/reviewPrompt 是完整阶段提示词，默认来自 src/prompt.ts，经 Config 的 volatile 字段和 SettingsSchema 提供。Host 每次 attempt 读取快照并按阶段选择，末尾只附加用户 style；不在自定义文本前后偷偷补上默认 COMMON。原生界面支持逐项恢复默认且只在保存后落盘，空白验证不会 trim 用户已输入的有效文本。每步请求记录实际使用文本，保持可回放。
 
 用户已明确调整目标：A 正常完成工作后，B 先基于 A 写本次报告前的工作上下文独立起草，再获得 A 报告并核对自己的稿件。不得把这次改回“润色 A 原文”。默认起草一次、核对一次；设 0 轮核对时绝不向 B 提供 A 本次报告；多轮核对都继续完善 B 上一稿。
 

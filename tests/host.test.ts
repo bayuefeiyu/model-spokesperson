@@ -449,3 +449,19 @@ test('recovery accepts only a completed staged final report and never reruns inc
     assert.equal(f.adapter.calls.length, count);
   } finally { await f.ctx.fiber.dispose(); }
 });
+
+test('custom stage prompts replace complete defaults and are recorded exactly with the chosen style', async () => {
+  const draftPrompt = '我的起草提示词\n按我的结构写。';
+  const reviewPrompt = '我的核对提示词\n只完善自己的上一稿。';
+  const style = '我的表达偏好';
+  const f = await fixture(options => text(options.model === 'a' ? 'A 参考报告' : 'B 正文'), { draftPrompt, reviewPrompt, style });
+  try {
+    await f.prompt();
+    const row = await f.waitRow();
+    const calls = f.adapter.calls.filter(call => call.model === 'b');
+    assert.deepEqual(calls.map(call => call.system), [draftPrompt + '\n表达偏好：' + style, reviewPrompt + '\n表达偏好：' + style]);
+    assert.deepEqual(row.stages?.map(stage => stage.system), calls.map(call => call.system));
+    assert.equal(inputOf(calls[0]).sourceReport, undefined);
+    assert.equal(inputOf(calls[1]).sourceReport, 'A 参考报告');
+  } finally { await f.ctx.fiber.dispose(); }
+});

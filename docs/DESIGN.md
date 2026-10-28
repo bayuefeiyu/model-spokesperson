@@ -1,6 +1,6 @@
 # 实现设计
 
-当前 0.2.0，目标 DSH 0.2.1-rc.3。新流程验收见 `evidence/report-validation.md`；`evidence/validation.md` 与 `settings-validation.md` 是旧版本证据。
+当前 0.2.1，目标 DSH 0.2.1-rc.3。独立报告流程验收见 `evidence/report-validation.md`，提示词设置见 `evidence/prompt-validation.md`；`evidence/validation.md` 与 `settings-validation.md` 是旧版本证据。
 
 ```text
 用户 → A 的正常 AgentLoop → 原始助手消息/工具事件 → 原会话日志
@@ -25,6 +25,8 @@
 B 第一请求只有 userQuestion/workContext，没有 A 本次报告。第一步成功后，review 输入增加 ownDraft/sourceReport/reviewRound，每轮以 B 上一步输出为 ownDraft，工作证据不变。B 使用独立 ctx.llm.stream、tools:[] 和单条有来源的 JSON 材料消息，没有 agent loop；不直接继承 A 的系统角色与写作习惯。B/标题/摘要不会触发该 agent 的 stream，因此同路由 B 不递归。
 
 核对指令要求保留 B 的结构和措辞，以工作证据核对 A 报告中的差异，不能直接把 A 的全部断言视为事实。新稿不使用旧版逐项相等校验；允许有依据地补充、合并、重排数字和代码周围的说明。形式检查只确保正常结束、非空文本、不调用工具、不产生其他块，不能证明事实正确。旧版校验仅用于 policyVersion 1 历史恢复。
+
+0.2.1 将完整起草和核对指令开放为 draftPrompt/reviewPrompt，缺失字段回填内置默认全文。配置为 volatile，单次 attempt 设置快照固定全部核对阶段的文本，保存只改变后续回复。用户提示词完整替换对应阶段默认内容，末尾只加 style；字段不作模板插值。原生编辑器预填实际文本、拒绝空白、逐项恢复默认，恢复仍按普通草稿原子保存。promptVersion 2 继续表示数据协议，实际提示词由各 stage.system 记录。
 
 状态按 agent / session / turn / step / attempt 隔离。FIFO 队列限并发，超时包含排队。新输入、显式取消、agent 销毁或卸载取消挂起任务；不遵守取消的 provider 的迟到结果也不能提交。失败回退不重跑 A，错误 reason 不包含 provider 异常细节。
 

@@ -7,6 +7,7 @@ import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types
 import { SettingsView } from '../src/settings-view.tsx';
 import { SettingsSchema, type Settings } from '../src/contract.ts';
 import { Config, readSettings } from '../src/config.ts';
+import { DRAFT_SYSTEM, REVIEW_SYSTEM } from '../src/prompt.ts';
 
 const rule = { source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } };
 const catalog: ModelCatalog = { default: rule.source, routableProviders: ['mock'], failures: [], groups: [{ id: 'mock', name: 'Mock', models: [{id:'a',name:'工作 A'},{id:'b',name:'编辑 B'}] }] };
@@ -38,7 +39,7 @@ test('native Config refs preserve cross-field validation and serialize editable 
   const good = await Config['~standard'].validate({enabled:true,rules:[rule]});
   assert.ok(!good.issues);
   assert.equal(readSettings(good.value as Parameters<typeof readSettings>[0]).enabled,true);
-  for (const candidate of [{enabled:true,rules:[]},{enabled:true,rules:[rule,rule]}]) {
+  for (const candidate of [{enabled:true,rules:[]},{enabled:true,rules:[rule,rule]},{draftPrompt:' \n '},{reviewPrompt:''}]) {
     const bad=await Config['~standard'].validate(candidate);
     assert.ok(bad.issues?.length);
   }
@@ -74,9 +75,9 @@ test('UI rejects duplicate source routes and refuses to overwrite a concurrent e
   assert.equal(button(view!.root,'保存设置').props.disabled,true);
   assert.ok(view!.root.findAllByProps({role:'alert'}).some(node=>label(node).includes('只能配置一次')));
   act(()=>button(view!.root,'放弃修改').props.onClick());
-  act(()=>view!.root.findByType('textarea').props.onChange({target:{value:'保留我的修改'}}));
+  act(()=>view!.root.findByProps({'aria-label':'表达偏好'}).props.onChange({target:{value:'保留我的修改'}}));
   act(()=>f.external(SettingsSchema.parse({enabled:true,rules:[rule],style:'别处的设置'})));
-  assert.equal(view!.root.findByType('textarea').props.value,'保留我的修改');
+  assert.equal(view!.root.findByProps({'aria-label':'表达偏好'}).props.value,'保留我的修改');
   assert.equal(button(view!.root,'保存设置').props.disabled,true);
   assert.equal(f.calls.length,0);
   view!.unmount();
@@ -88,10 +89,10 @@ test('failed saves preserve the draft and an unavailable model never erases its 
   let view: ReturnType<typeof create>;
   await act(async()=>{view=create(<SettingsView form={f.form} loadCatalog={async()=>{throw new Error('offline');}}/>);});
   assert.equal(view!.root.findAllByType('select')[1].props.value,JSON.stringify(['old','missing']));
-  act(()=>view!.root.findByType('textarea').props.onChange({target:{value:'新的表达偏好'}}));
+  act(()=>view!.root.findByProps({'aria-label':'表达偏好'}).props.onChange({target:{value:'新的表达偏好'}}));
   await act(async()=>{view!.root.findByType('form').props.onSubmit({preventDefault(){}});});
   assert.equal(f.calls.length,1);
-  assert.equal(view!.root.findByType('textarea').props.value,'新的表达偏好');
+  assert.equal(view!.root.findByProps({'aria-label':'表达偏好'}).props.value,'新的表达偏好');
   assert.ok(view!.root.findAllByProps({role:'alert'}).some(node=>label(node).includes('保存未成功')));
   view!.unmount();
 });
@@ -106,5 +107,29 @@ test('UI saves review rounds and large or unlimited budgets without the old caps
   assert.equal(button(view!.root, '保存设置').props.disabled, false);
   await act(async () => { view!.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
   assert.deepEqual(f.form.getSnapshot().value, SettingsSchema.parse({ enabled: true, rules: [rule], reviewRounds: 3, maxInputChars: 0, maxOutputTokens: 100000 }));
+  view!.unmount();
+});
+
+test('prompt editors preload full defaults, stage edits, reject empty text and restore per stage', async () => {
+  const f = fixture();
+  let view: ReturnType<typeof create>;
+  await act(async () => { view = create(<SettingsView form={f.form} loadCatalog={async () => catalog} />); });
+  const field = (name: string) => view!.root.findByProps({ 'aria-label': name });
+  assert.equal(field('独立起草提示词').props.value, DRAFT_SYSTEM);
+  assert.equal(field('核对完善提示词').props.value, REVIEW_SYSTEM);
+  act(() => field('独立起草提示词').props.onChange({ target: { value: '用户自己的起草要求\n保留换行。' } }));
+  act(() => field('核对完善提示词').props.onChange({ target: { value: '  \n ' } }));
+  assert.equal(f.calls.length, 0);
+  assert.equal(button(view!.root, '保存设置').props.disabled, true);
+  assert.ok(view!.root.findAllByProps({ role: 'alert' }).some(node => label(node).includes('核对完善提示词不能为空')));
+  act(() => button(view!.root, '恢复默认核对提示词').props.onClick());
+  assert.equal(field('独立起草提示词').props.value, '用户自己的起草要求\n保留换行。');
+  assert.equal(field('核对完善提示词').props.value, REVIEW_SYSTEM);
+  assert.equal(f.calls.length, 0);
+  await act(async () => { view!.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
+  assert.deepEqual(f.calls[0].ops, [{ op: 'set', path: ['draftPrompt'], value: '用户自己的起草要求\n保留换行。' }]);
+  act(() => button(view!.root, '恢复默认起草提示词').props.onClick());
+  assert.equal(field('独立起草提示词').props.value, DRAFT_SYSTEM);
+  assert.equal(f.calls.length, 1, 'restore remains staged until Save');
   view!.unmount();
 });

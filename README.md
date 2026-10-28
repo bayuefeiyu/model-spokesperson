@@ -2,7 +2,7 @@
 
 指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-当前原生 Host + Web Client bundle **0.2.0**，目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。安装包：`dist/dsh-plugins-model-spokesperson-0.2.0.tgz`。
+当前原生 Host + Web Client bundle **0.2.1**，目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。安装包：`dist/dsh-plugins-model-spokesperson-0.2.1.tgz`。
 
 GitHub 私有仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
@@ -23,12 +23,12 @@ GitHub 私有仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 
 使用目标 DSH 安装自带的 CLI 安装到指定 profile（`dsh` 代表该 CLI；本机 shell 使用 RTK）：
 
-在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.2.0`。私有仓库需要安装环境已登录有权限的 GitHub 账号。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
+在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.2.1`。私有仓库需要安装环境已登录有权限的 GitHub 账号。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
 
 ```powershell
-rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.2.0
+rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.2.1
 # 也可下载 Release 安装包后使用本地路径：
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.0.tgz
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.1.tgz
 ```
 
 如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。
@@ -42,7 +42,15 @@ rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-
 
 界面支持多组映射；同一 provider/model 的 A 只能出现一次。只有保存才写入当前 profile；刷新和重启保留设置，修改对后续回复生效，进行中的整理保留原设置。部分模型暂时不可用时保留已有选择；并发修改会提示冲突，不会直接覆盖。
 
-通过 GitHub URL 安装的旧版本，在同一 profile 的插件管理器卸载后重装 0.2.0；卸载保留 profile 配置。上游 registry/npm 更新入口不适用于 Git URL 来源。也可以手动在该 profile 的 `cordis.patch.yml` 加入或合并：
+### 自定义提示词（0.2.1）
+
+在 **模型与表达 → 提示词设置** 展开并编辑“独立起草提示词”和“核对完善提示词”。两项均预填当前完整默认内容，包含原先共用的职责和事实要求；保存后替换对应阶段全文，不另外附加隐藏的默认正文。上方“表达偏好”仍作为单独一行附在提示词末尾。
+
+每项提供“恢复默认”按钮，只修改当前草稿，仍须保存。不能保存空白提示词。编辑、保存和恢复均通过原生 ConfigForm，刷新及重启保留；修改只用于后续回复，进行中的多轮调用使用开始时的提示词快照。
+
+起草请求的 JSON 字段为 `userQuestion`、`workContext`；核对还包含 `ownDraft`（B 上一稿）、`sourceReport`（A 参考稿）、`reviewRound`。插件独立提供数据，不在提示词中替换占位符。核对轮数为 0 时不使用核对提示词。手动配置字段为 `draftPrompt`、`reviewPrompt`，未设置时沿用内置默认值；用户已经保存的内容在升级后保留。
+
+通过 GitHub URL 安装的旧版本，在同一 profile 的插件管理器卸载后重装 0.2.1；卸载保留 profile 配置。上游 registry/npm 更新入口不适用于 Git URL 来源。也可以手动在该 profile 的 `cordis.patch.yml` 加入或合并：
 
 ```yaml
 - id: model-spokesperson-host
