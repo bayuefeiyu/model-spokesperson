@@ -95,5 +95,23 @@
   },
   "realModelApiCalls": 0,
   "dailyInstallationModified": false,
-  "dailyProfileModified": false
+  "dailyProfileModified": false,
+  "githubSource": {
+    "verified": true,
+    "url": "https://github.com/bayuefeiyu/model-spokesperson",
+    "testedCommit": "3a93131bfdc1735c45360bdadfdde380714ace62",
+    "settingsPreserved": true,
+    "browserChat": true,
+    "manager": {
+      "version": "0.2.0",
+      "source": "github",
+      "bundleRecognized": true,
+      "components": [
+        "model-spokesperson-host",
+        "model-spokesperson-ui"
+      ],
+      "bundleDisabledAndReenabled": true,
+      "pageErrors": []
+    }
+  }
 }

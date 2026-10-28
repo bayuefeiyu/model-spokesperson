@@ -28,6 +28,7 @@ B 先读取 A 本次报告生成之前的有效工作快照，独立起草。后
 - mock `review-fail` 让初稿成功、首次核对失败：原行回退 A，只调用 A/B/B，没有重做 A。
 - 刷新及进程重启后，已完成 B 稿直接回放，不增加模型调用；设置保留核对 2 轮和模型选择。
 - 最终 tarball 安装后，原生插件管理器识别 0.2.0 和 Host/UI 两个组件，bundle 关闭再启用正常，无浏览器错误。
+- GitHub URL 固定提交 3a93131bfdc1735c45360bdadfdde380714ace62 安装通过；插件管理器识别 Git 来源，设置保留，重新验证聊天起草/核对/原文/刷新。安装副本与构建产物逐文件摘要一致。
 
 机器记录见 [report-validation.json](report-validation.json)、[设置](report-settings.json)、[重启](report-settings-restart.json)、[聊天](report-chat.json)、[核对失败](report-fallback.json)。界面截图：[设置](report-settings.png)、[聊天](report-chat.png)。分发与发布结果以机器记录的 `githubSource`/`release` 为准。
 
