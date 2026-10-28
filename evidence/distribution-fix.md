@@ -27,3 +27,7 @@
 隔离 home 为 .dev/runtime/spokesperson-home，profile 为 spokesperson-github，端口 31948，工作区在 .dev/documents。日常安装和用户 profile 未修改，无真实模型 API 调用。验证结束后停止本次 Web 服务。安装包摘要见 distribution-fix.json 与 Release 中的 SHA256SUMS.txt。
 
 新发布的 v0.1.1 标签包含相同修复代码、组合包清单和预构建入口；追加的提交仅补全验收记录。0.1.0 的验证记录保持为历史快照，不据此声称旧仓库 URL 可安装。
+
+## 发布
+
+[v0.1.1](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.1.1) 已发布，标签对应 cf0388218d68da87311959d0d1e771625e7ec0b2。安装包和校验文件均已从 GitHub 下载复核。安装包 SHA-256 为 `8e43cbc477616405eb390e3eba93cd156b4482d71c3355e14157935866b1a0ec`。
