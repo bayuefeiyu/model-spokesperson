@@ -1,0 +1,72 @@
+{
+  "validationDate": "2026-10-28",
+  "version": "0.1.1",
+  "runtime": "0.2.1-rc.3",
+  "reproduced": {
+    "oldCommit": "5e8f1159440880bd26dbae9644fcab49d1bf6342",
+    "oldDependency": "model-spokesperson-development",
+    "warning": "declares no dsh.bundle"
+  },
+  "githubInstallation": {
+    "url": "https://github.com/bayuefeiyu/model-spokesperson",
+    "testedCommit": "331a05fcba62d5ba5eb239298d59e53f00f8cdab",
+    "selectedAsBundle": true,
+    "installedCodeMatches": true
+  },
+  "checks": {
+    "typecheck": "pass",
+    "tests": {
+      "pass": 20,
+      "fail": 0
+    },
+    "build": "pass",
+    "managerTarball": {
+      "version": "0.1.1",
+      "source": "tarball",
+      "bundleRecognized": true,
+      "components": [
+        "model-spokesperson-host",
+        "model-spokesperson-ui"
+      ],
+      "bundleDisabledAndReenabled": true,
+      "pageErrors": []
+    },
+    "managerGithub": {
+      "version": "0.1.1",
+      "source": "github",
+      "bundleRecognized": true,
+      "components": [
+        "model-spokesperson-host",
+        "model-spokesperson-ui"
+      ],
+      "bundleDisabledAndReenabled": true,
+      "pageErrors": []
+    },
+    "browser": {
+      "runtime": "0.2.1-rc.3",
+      "browser": "headless Microsoft Edge",
+      "checks": [
+        "candidate original never displayed while pending",
+        "official reasoning disclosure remains usable",
+        "B in original row with working original disclosure",
+        "refresh replays saved rewrite with no new model calls"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "fallback": {
+      "fallbackToOriginal": true,
+      "modelCalls": 2,
+      "sourceRepeated": false,
+      "pageErrors": [],
+      "realApiCalls": 0
+    }
+  },
+  "artifact": {
+    "path": "dist/dsh-plugins-model-spokesperson-0.1.1.tgz",
+    "bytes": 28602,
+    "sha256": "8e43cbc477616405eb390e3eba93cd156b4482d71c3355e14157935866b1a0ec"
+  },
+  "realModelApiCalls": 0,
+  "dailyInstallationModified": false
+}

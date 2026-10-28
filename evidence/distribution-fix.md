@@ -16,8 +16,14 @@
 - 增加 distribution.test.ts，使用宿主官方 bundlePatchPaths/loadOverlayPatches/composeEntries 检查根清单和可加载入口。
 - README 增加 GitHub URL 安装方法；旧 model-spokesperson-development 普通依赖需移除后重装。
 
-## 当前验证
+## 实际验证结果
 
-类型检查、构建、20 项自动测试通过。0.1.1 tarball 已在 spokesperson-github 隔离 profile 安装，Web 端口 31948 的原生插件管理器显示版本及 Host/UI 两个运行中组件。
+- 类型检查、构建、20 项自动测试全部通过；新增测试检查根清单、官方 patch 解析以及预构建 Host/Client 入口。
+- 0.1.1 tarball 在 spokesperson-github 隔离 profile 成功安装，原生插件管理器显示版本和 Host/UI 两个运行中组件，组合包开关可关闭并重新启用，浏览器无错误。
+- 从用户原始 URL `https://github.com/bayuefeiyu/model-spokesperson` 直接重新安装，pnpm 锁定修复 commit `331a05fcba62d5ba5eb239298d59e53f00f8cdab`；宿主自动将 @dsh-plugins/model-spokesperson 加入 profile 的 bundles，没有 no dsh.bundle 警告。
+- 对 GitHub 安装实例再次检查原生插件管理器：识别 0.1.1、展示两个组件、开关可关闭并重新启用，通过。结果见 plugin-manager-github.json 和 plugin-manager-tarball.json。
+- 在同一个 GitHub 安装实例运行 browser-e2e：原文不闪现、B 原行展示、默认思考折叠、原文查看和刷新不新增模型调用全部通过，浏览器无错误。
 
-后续 GitHub URL 直接安装、管理器启停和浏览器回归结果将在本次发布前补入本记录。日常安装和用户 profile 未修改，无真实模型 API 调用。
+隔离 home 为 .dev/runtime/spokesperson-home，profile 为 spokesperson-github，端口 31948，工作区在 .dev/documents。日常安装和用户 profile 未修改，无真实模型 API 调用。验证结束后停止本次 Web 服务。安装包摘要见 distribution-fix.json 与 Release 中的 SHA256SUMS.txt。
+
+新发布的 v0.1.1 标签包含相同修复代码、组合包清单和预构建入口；追加的提交仅补全验收记录。0.1.0 的验证记录保持为历史快照，不据此声称旧仓库 URL 可安装。

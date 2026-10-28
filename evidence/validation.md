@@ -1,5 +1,7 @@
 # 验收记录
 
+本文件保留 0.1.0 的验收快照。0.1.1 的 GitHub URL 安装修复及实际管理器验证见 [分发修复记录](distribution-fix.md)。
+
 开发开始：2026-10-27。最终复核：2026-10-28。插件 **0.1.0**，DSH **0.2.1-rc.3**，build **be72761ee1a6736ebcdf4f3739363b083ae53c98**，Node **24.20.0**。
 
 最终包、源文件摘要和机器可读结果见 [validation.json](validation.json)。安装包为 `dist/dsh-plugins-model-spokesperson-0.1.0.tgz`，校验值在 `dist/SHA256SUMS.txt`。实际安装的 Host/Client 文件与本次构建逐字节摘要一致。
