@@ -22,6 +22,8 @@ GitHub 固定提交 f6800d555f64a68c4d8c3fc2ce8bb11d3c73774c 重新安装并重�
 
 机器结果见 `prompt-validation.json`、`prompt-settings.json`、`prompt-restart.json`；界面截图为 `prompt-settings.png`。分发及发布结果以机器记录为准。
 
+已发布 [v0.2.1 预发行版](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.2.1)，标签提交 6251afe15aa3f7fca7788b33969ab08871b08550。安装包 56638 字节，SHA-256 为 `2f734f0948650750cf21017a324208c5dc0350b0505bc285c3bcc70c04d0a530`。安装包和 SHA256SUMS.txt 均通过 GitHub API 下载至内存复核摘要，仓库保持私有。
+
 ## 边界
 
 mock 证明配置、请求及持久化行为，不能证明真实模型一定遵守用户编写的提示词。编辑提示词不会改变 B 无工具权限或第一步排除 A 本次成稿的输入流程。旧历史不会重新调用模型。
