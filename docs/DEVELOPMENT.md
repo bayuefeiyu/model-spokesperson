@@ -22,7 +22,7 @@ Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试�
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/inspect-runtime.py --installation "G:\ai\harness\dsh desktop" --output evidence/runtime-inspection.json
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/prepare-runtime.py
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --from-default-profile web --dump-config
-rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.1.2.tgz
+rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.0.tgz
 rtk proxy node scripts/prepare-demo.mjs
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --port 31947 --no-open
 ```
@@ -59,4 +59,6 @@ rtk proxy node scripts/browser-e2e.mjs LOCAL_URL
 
 0.1.2 使用原生 Settings 服务与 `plugins.bundle.config`。`src/config.ts` 的字段为 volatile 引用；Host 在 source attempt 开始读取设置，B 保留该次快照。不要只在插件 apply 时取值，否则界面保存后运行逻辑仍会使用旧设置。
 
-可用 `node scripts/prepare-demo.mjs spokesperson-ui --empty-settings` 创建关闭且无映射的 mock 配置，再启动该 profile。`node scripts/browser-settings.mjs LOCAL_URL spokesperson-ui` 从前端配置 A/B、保存后验证实际模型调用、关闭 B 并恢复；重启服务后加 `--verify-only` 验证持久化。脚本都通过 rtk proxy 执行，结果在 evidence/settings-ui.json、settings-restart.json 和 settings-ui.png。
+可用 `node scripts/prepare-demo.mjs spokesperson-report --empty-settings` 创建关闭且无映射的 mock 配置，再启动该 profile。`node scripts/browser-settings.mjs LOCAL_URL spokesperson-report` 从前端配置 A/B、核对 2 轮、输出 100000 tokens，保存后验证实际调用序列 A/B/B/B 和第一步成稿隔离，关闭 B 并恢复；重启服务后加 `--verify-only` 验证持久化。脚本都通过 rtk proxy 执行，结果在 evidence/report-settings.json、report-settings-restart.json 和 report-settings.png。
+
+0.2.0 使用独立 profile `spokesperson-report`、端口 31950。`browser-e2e.mjs` 输出 report-chat.json/png，检查起草/核对进度、无原文闪现与刷新；`browser-fallback.mjs` 使用 review-fail 让独立初稿成功但核对失败，检查 A 原文回退且只调用 A/B/B。mock 不验证模型是否真实遵循写作和核对指令，语义质量需另行验证。

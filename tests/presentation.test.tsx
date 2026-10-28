@@ -43,3 +43,15 @@ test('history without record, tools, interruption, stale message and changed sou
   }
   assert.equal(presentation({ ...row, status: 'fallback' }, p), 'fallback');
 });
+
+test('independent report progress shows drafting/reviewing and never exposes a partial draft', () => {
+  const View = createAssistantView(Default);
+  const current: Rewrite = { ...row, policyVersion: 2, promptVersion: 2, status: 'rewriting', phase: 'drafting', reviewRound: 0, reviewRounds: 2, stages: [{ kind: 'draft', round: 0, system: '', input: '', output: '未核对的初稿', startedAt: 0 }] };
+  const render = create(<View {...props(current)} />);
+  assert.equal(render.root.findByProps({ role: 'status' }).children[0], 'B 正在独立起草…');
+  assert.ok(!JSON.stringify(render.toJSON()).includes('未核对的初稿'));
+  act(() => render.update(<View {...props({ ...current, phase: 'reviewing', reviewRound: 2 })} />));
+  assert.equal(render.root.findByProps({ role: 'status' }).children[0], 'B 正在核对完善（2/2）…');
+  assert.ok(!JSON.stringify(render.toJSON()).includes('复杂原文'));
+  render.unmount();
+});

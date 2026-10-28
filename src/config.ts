@@ -12,11 +12,12 @@ const route = schema.object({ provider: schema.string().min(1).required(), model
 export const Config = schema.object({
   enabled: schema.boolean().default(false).volatile(),
   rules: schema.array(schema.object({ source: route.required(), writer: route.required() })).default([]).volatile(),
-  style: schema.string().max(4000).default('中文，结论先行，少术语，忠实于原文。').volatile(),
-  timeoutMs: schema.natural().min(1).max(300000).default(45000).volatile(),
+  style: schema.string().max(4000).default('中文，结论先行，少术语，清楚自然，事实准确。').volatile(),
+  reviewRounds: schema.natural().max(Number.MAX_SAFE_INTEGER).default(1).volatile(),
+  timeoutMs: schema.natural().max(2147483647).default(0).volatile(),
   maxConcurrentRewrites: schema.natural().min(1).max(16).default(2).volatile(),
-  maxInputChars: schema.natural().min(1).max(200000).default(30000).volatile(),
-  maxOutputTokens: schema.natural().min(1).max(32768).default(8192).volatile(),
+  maxInputChars: schema.natural().max(Number.MAX_SAFE_INTEGER).default(0).volatile(),
+  maxOutputTokens: schema.natural().max(Number.MAX_SAFE_INTEGER).default(0).volatile(),
 });
 // Keep the native Schemastery object/metadata for Loader and Settings, and add
 // the same cross-field validation used by the editor before live refs commit.

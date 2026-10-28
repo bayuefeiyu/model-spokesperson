@@ -1,4 +1,9 @@
-/** Deterministic checks are conservative guards, not a proof of semantic equivalence. */
+/** Independent reports may change ordering/wording. Factual review is an LLM task. */
+export function validateReport(text: string): string | undefined {
+  return text.trim() ? undefined : 'empty-output';
+}
+
+/** Legacy v1 recovery only; never constrain independent reports against A's wording. */
 export function skipText(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed) return true;

@@ -23,9 +23,11 @@ try {
   await page.waitForTimeout(300);
   await writeFile('evidence/private/editor.html', await page.locator('body').innerHTML());
   await page.getByRole('button', { name: '发送消息', exact: true }).click();
-  await page.getByRole('status').filter({ hasText: '正在整理表达' }).waitFor({ timeout: 15000 });
+  await page.getByRole('status').filter({ hasText: 'B 正在独立起草' }).waitFor({ timeout: 15000 });
   assert.equal(await page.getByText('针对当前事项，综合考量后建议采用第一种实现。', { exact: true }).count(), 0);
   checks.push('candidate original never displayed while pending');
+  await page.getByRole('status').filter({ hasText: 'B 正在核对完善' }).waitFor({ timeout: 15000 });
+  checks.push('drafting and review progress are visible without exposing drafts');
   await page.locator('[data-model-spokesperson="ready"]').waitFor({ timeout: 15000 });
   assert.ok(await page.getByText('建议采用第一种实现。', { exact: true }).isVisible());
   assert.equal(await page.evaluate(() => window.__originalLeaked), false, 'raw A must never flash before disclosure');
@@ -43,12 +45,12 @@ try {
   assert.equal(callsAfter, callsBefore);
   checks.push('refresh replays saved rewrite with no new model calls');
   await mkdir('evidence', { recursive: true });
-  await page.screenshot({ path: 'evidence/mock-chat.png', fullPage: true });
+  await page.screenshot({ path: 'evidence/report-chat.png', fullPage: true });
   const route = new URL(page.url());
   route.searchParams.delete('token');
   await writeFile('evidence/private/chat-route.json', JSON.stringify({ pathname: route.pathname, search: route.search, hash: route.hash }));
   assert.deepEqual(errors, []);
-  await writeFile('evidence/browser-e2e.json', JSON.stringify({ runtime: '0.2.1-rc.3', browser: 'headless Microsoft Edge', checks, pageErrors: errors, realApiCalls: 0 }, null, 2) + '\n');
+  await writeFile('evidence/report-chat.json', JSON.stringify({ version: '0.2.0', runtime: '0.2.1-rc.3', browser: 'headless Microsoft Edge', checks, pageErrors: errors, realApiCalls: 0 }, null, 2) + '\n');
   console.log(JSON.stringify({ checks, pageErrors: errors }));
 } catch (error) {
   const page = browser.contexts()[0]?.pages()[0];

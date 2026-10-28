@@ -39,11 +39,12 @@ var RuleSchema = import_zod.z.object({ source: RouteSchema, writer: RouteSchema 
 var SettingsSchema = import_zod.z.object({
   enabled: import_zod.z.boolean().default(false),
   rules: import_zod.z.array(RuleSchema).default([]),
-  style: import_zod.z.string().max(4e3).default("\u4E2D\u6587\uFF0C\u7ED3\u8BBA\u5148\u884C\uFF0C\u5C11\u672F\u8BED\uFF0C\u5FE0\u5B9E\u4E8E\u539F\u6587\u3002"),
-  timeoutMs: import_zod.z.number().int().min(1).max(3e5).default(45e3),
+  style: import_zod.z.string().max(4e3).default("\u4E2D\u6587\uFF0C\u7ED3\u8BBA\u5148\u884C\uFF0C\u5C11\u672F\u8BED\uFF0C\u6E05\u695A\u81EA\u7136\uFF0C\u4E8B\u5B9E\u51C6\u786E\u3002"),
+  reviewRounds: import_zod.z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(1),
+  timeoutMs: import_zod.z.number().int().min(0).max(2147483647).default(0),
   maxConcurrentRewrites: import_zod.z.number().int().min(1).max(16).default(2),
-  maxInputChars: import_zod.z.number().int().min(1).max(2e5).default(3e4),
-  maxOutputTokens: import_zod.z.number().int().min(1).max(32768).default(8192)
+  maxInputChars: import_zod.z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
+  maxOutputTokens: import_zod.z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0)
 }).superRefine((config, ctx) => {
   const seen = /* @__PURE__ */ new Set();
   config.rules.forEach((rule, index) => {
@@ -53,10 +54,20 @@ var SettingsSchema = import_zod.z.object({
   });
   if (config.enabled && config.rules.length === 0) ctx.addIssue({ code: "custom", path: ["rules"], message: "\u542F\u7528\u65F6\u81F3\u5C11\u914D\u7F6E\u4E00\u4E2A\u6765\u6E90\u6A21\u578B" });
 });
+var ReportStageSchema = import_zod.z.object({
+  kind: import_zod.z.enum(["draft", "review"]),
+  round: import_zod.z.number().int().min(0),
+  system: import_zod.z.string(),
+  input: import_zod.z.string(),
+  startedAt: import_zod.z.number(),
+  output: import_zod.z.string().optional(),
+  usage: import_zod.z.unknown().optional(),
+  finishedAt: import_zod.z.number().optional()
+});
 var RewriteSchema = import_zod.z.object({
   schemaVersion: import_zod.z.literal(1),
-  policyVersion: import_zod.z.literal(1),
-  promptVersion: import_zod.z.literal(1),
+  policyVersion: import_zod.z.union([import_zod.z.literal(1), import_zod.z.literal(2)]),
+  promptVersion: import_zod.z.union([import_zod.z.literal(1), import_zod.z.literal(2)]),
   sessionId: import_zod.z.string(),
   turn: import_zod.z.number().int(),
   step: import_zod.z.number().int(),
@@ -72,7 +83,11 @@ var RewriteSchema = import_zod.z.object({
   startedAt: import_zod.z.number(),
   finishedAt: import_zod.z.number().optional(),
   usage: import_zod.z.unknown().optional(),
-  request: import_zod.z.object({ system: import_zod.z.string(), input: import_zod.z.string() }).optional()
+  request: import_zod.z.object({ system: import_zod.z.string(), input: import_zod.z.string() }).optional(),
+  phase: import_zod.z.enum(["drafting", "reviewing"]).optional(),
+  reviewRound: import_zod.z.number().int().min(0).optional(),
+  reviewRounds: import_zod.z.number().int().min(0).optional(),
+  stages: import_zod.z.array(ReportStageSchema).optional()
 });
 var ProjectionSchema = import_zod.z.record(import_zod.z.string(), RewriteSchema);
 var StateSchema = import_zod.z.object({ rows: ProjectionSchema, latestUser: import_zod.z.string(), synced: import_zod.z.array(import_zod.z.string()) });
@@ -95,7 +110,7 @@ function presentation(row, props) {
 }
 function createAssistantView(Default) {
   return function SpokespersonAssistant(props) {
-    const [copyState, setCopyState] = (0, import_react.useState)("\u590D\u5236\u6574\u7406\u7A3F");
+    const [copyState, setCopyState] = (0, import_react.useState)("\u590D\u5236 B \u56DE\u590D");
     const rows = props.useProjection(PROJECTION);
     const row = rows?.[stepKey(props.node.data.turn, props.node.data.step)];
     const mode = presentation(row, props);
@@ -103,14 +118,15 @@ function createAssistantView(Default) {
     const data = props.node.data;
     if (mode === "pending") {
       const withoutText = { ...props.node, data: { ...data, blocks: data.blocks.filter((block) => block.kind !== "text") } };
+      const progress = row?.policyVersion === 2 ? row.status === "collecting" ? "\u7B49\u5F85 A \u5B8C\u6210\u56DE\u590D\u2026" : row.phase === "reviewing" ? `B \u6B63\u5728\u6838\u5BF9\u5B8C\u5584\uFF08${row.reviewRound}/${row.reviewRounds}\uFF09\u2026` : "B \u6B63\u5728\u72EC\u7ACB\u8D77\u8349\u2026" : "\u6B63\u5728\u6574\u7406\u8868\u8FBE\u2026";
       return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Default, { ...props, node: withoutText }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { role: "status", "aria-live": "polite", style: hint, children: "\u6B63\u5728\u6574\u7406\u8868\u8FBE\u2026" })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { role: "status", "aria-live": "polite", style: hint, children: progress })
       ] });
     }
     if (mode === "fallback") return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Default, { ...props }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { role: "status", style: hint, children: "\u6574\u7406\u672A\u5B8C\u6210\uFF0C\u5DF2\u663E\u793A\u539F\u6587\u3002" })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { role: "status", style: hint, children: row?.policyVersion === 2 ? "B \u56DE\u590D\u672A\u5B8C\u6210\uFF0C\u5DF2\u663E\u793A A \u539F\u6587\u3002" : "\u6574\u7406\u672A\u5B8C\u6210\uFF0C\u5DF2\u663E\u793A\u539F\u6587\u3002" })
     ] });
     let inserted = false;
     const blocks = data.blocks.flatMap((block) => {
@@ -122,7 +138,7 @@ function createAssistantView(Default) {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { "data-model-spokesperson": "ready", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Default, { ...props, node: { ...props.node, data: { ...data, blocks } } }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { ...hint, display: "flex", alignItems: "center", gap: 10 }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u6587\u5B57\u5DF2\u6574\u7406" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: row.policyVersion === 2 ? `B \u5DF2\u72EC\u7ACB\u4F5C\u7B54${row.reviewRounds ? ` \xB7 \u5DF2\u6838\u5BF9 ${row.reviewRounds} \u8F6E` : ""}` : "\u6587\u5B57\u5DF2\u6574\u7406" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
           "button",
           {
@@ -257,13 +273,13 @@ function SettingsView({ form, loadCatalog }) {
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("form", { "aria-label": "\u6A21\u578B\u5634\u66FF\u8BBE\u7F6E", noValidate: true, onSubmit: (event) => void save(event), style: { ...text, padding: "18px 0", display: "grid", gap: 16 }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h3", { style: { margin: 0, fontSize: 16 }, children: "\u6A21\u578B\u4E0E\u8868\u8FBE" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "A \u8D1F\u8D23\u601D\u8003\u548C\u6267\u884C\u5DE5\u4F5C\uFF0CB \u53EA\u6574\u7406\u9762\u5411\u7528\u6237\u7684\u6587\u5B57\u3002" })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "A \u8D1F\u8D23\u5206\u6790\u548C\u6267\u884C\uFF0CB \u6839\u636E\u5DE5\u4F5C\u4E0A\u4E0B\u6587\u72EC\u7ACB\u4F5C\u7B54\uFF0C\u518D\u53C2\u8003 A \u7684\u62A5\u544A\u6838\u5BF9\u81EA\u5DF1\u7684\u521D\u7A3F\u3002" })
     ] }),
     !snapshot.writable && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", style: note, children: "\u5F53\u524D\u90E8\u7F72\u7684\u914D\u7F6E\u4E3A\u53EA\u8BFB\u3002" }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("fieldset", { disabled: !writable, style: { border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 16 }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "flex", gap: 8, alignItems: "center" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "checkbox", checked: value.enabled, onChange: (event) => edit((settings) => ({ ...settings, enabled: event.target.checked })) }),
-        "\u5F00\u542F\u6587\u5B57\u6574\u7406"
+        "\u5F00\u542F B \u56DE\u590D"
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: note, children: [
@@ -279,7 +295,7 @@ function SettingsView({ form, loadCatalog }) {
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }, children: [
           selector(rule.source, `\u7B2C ${index + 1} \u7EC4 A \u6A21\u578B\uFF08\u5B8C\u6210\u5DE5\u4F5C\uFF09`, (route) => edit((settings) => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, source: route } : item) }))),
-          selector(rule.writer, `\u7B2C ${index + 1} \u7EC4 B \u6A21\u578B\uFF08\u6574\u7406\u8868\u8FBE\uFF09`, (route) => edit((settings) => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, writer: route } : item) })))
+          selector(rule.writer, `\u7B2C ${index + 1} \u7EC4 B \u6A21\u578B\uFF08\u72EC\u7ACB\u4F5C\u7B54\uFF09`, (route) => edit((settings) => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, writer: route } : item) })))
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", style: { ...button, marginTop: 12 }, onClick: () => edit((settings) => ({ ...settings, rules: settings.rules.filter((_, i) => i !== index) })), children: [
           "\u5220\u9664\u7B2C ",
@@ -292,15 +308,27 @@ function SettingsView({ form, loadCatalog }) {
         "\u8868\u8FBE\u504F\u597D",
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("textarea", { "aria-label": "\u8868\u8FBE\u504F\u597D", rows: 3, style: control, value: value.style, onChange: (event) => edit((settings) => ({ ...settings, style: event.target.value })) })
       ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
+        "\u6838\u5BF9\u8F6E\u6570",
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u6838\u5BF9\u8F6E\u6570", type: "number", min: 0, step: 1, style: control, value: value.reviewRounds, onChange: (event) => edit((settings) => ({ ...settings, reviewRounds: Number(event.target.value) })) }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: note, children: [
+          "\u5148\u72EC\u7ACB\u8D77\u8349\uFF0C\u518D\u6838\u5BF9 ",
+          value.reviewRounds,
+          " \u8F6E\uFF0C\u5171\u8C03\u7528 B ",
+          value.reviewRounds + 1,
+          " \u6B21\u3002\u8BBE\u4E3A 0 \u65F6\u53EA\u72EC\u7ACB\u8D77\u8349\uFF0C\u4E0D\u5411 B \u63D0\u4F9B A \u672C\u6B21\u62A5\u544A\u3002\u6BCF\u8F6E\u6838\u5BF9\u90FD\u5728 B \u81EA\u5DF1\u7684\u4E0A\u4E00\u7A3F\u4E0A\u5B8C\u5584\u3002"
+        ] })
+      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("details", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("summary", { style: { cursor: "pointer" }, children: "\u9AD8\u7EA7\u8BBE\u7F6E" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 12 }, children: [{ key: "timeoutMs", label: "\u6574\u7406\u8D85\u65F6\uFF08\u79D2\uFF09", scale: 1e3, min: 1e-3, max: 300 }, { key: "maxConcurrentRewrites", label: "\u540C\u65F6\u6574\u7406\u6570\u91CF", scale: 1, min: 1, max: 16 }, { key: "maxInputChars", label: "\u6700\u5927\u8F93\u5165\u5B57\u7B26\u6570", scale: 1, min: 1, max: 2e5 }, { key: "maxOutputTokens", label: "\u6700\u5927\u8F93\u51FA tokens", scale: 1, min: 1, max: 32768 }].map((field) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 12 }, children: [{ key: "timeoutMs", label: "\u5B8C\u6574\u6D41\u7A0B\u8D85\u65F6\uFF08\u79D2\uFF0C0 \u4E0D\u9650\uFF09", scale: 1e3, min: 0, max: 2147483647e-3 }, { key: "maxConcurrentRewrites", label: "\u540C\u65F6\u5904\u7406\u6570\u91CF", scale: 1, min: 1, max: 16 }, { key: "maxInputChars", label: "\u6BCF\u6B21\u8F93\u5165\u5B57\u7B26\u4E0A\u9650\uFF080 \u4E0D\u9650\uFF09", scale: 1, min: 0, max: Number.MAX_SAFE_INTEGER }, { key: "maxOutputTokens", label: "\u6BCF\u6B21\u8F93\u51FA tokens\uFF080 \u8DDF\u968F\u6A21\u578B\uFF09", scale: 1, min: 0, max: Number.MAX_SAFE_INTEGER }].map((field) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
           field.label,
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": field.label, type: "number", step: field.key === "timeoutMs" ? "any" : 1, min: field.min, max: field.max, style: control, value: value[field.key] / field.scale, onChange: (event) => edit((settings) => ({ ...settings, [field.key]: Number(event.target.value) * field.scale })) })
-        ] }, field.key)) })
+        ] }, field.key)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u63D2\u4EF6\u9ED8\u8BA4\u4E0D\u989D\u5916\u9650\u5236\u8F93\u5165\u548C\u7B49\u5F85\u65F6\u95F4\uFF0C\u8F93\u51FA\u4E0A\u9650\u8DDF\u968F B \u7684\u6A21\u578B\u914D\u7F6E\uFF1B\u5B9E\u9645\u4ECD\u53D7\u6A21\u578B\u53CA\u63D0\u4F9B\u65B9\u9650\u5236\u3002\u65E7\u8BBE\u7F6E\u4E2D\u7684\u9650\u989D\u4F1A\u4FDD\u7559\uFF0C\u53EF\u6539\u4E3A 0\u3002\u6BCF\u6B21\u8F93\u5165\u5305\u542B\u5DE5\u4F5C\u4E0A\u4E0B\u6587\uFF0C\u6838\u5BF9\u65F6\u8FD8\u5305\u542B B \u7684\u4E0A\u4E00\u7A3F\u548C A \u7684\u62A5\u544A\uFF1B\u8D85\u8FC7\u81EA\u8BBE\u4E0A\u9650\u4F1A\u56DE\u9000\uFF0C\u4E0D\u4F1A\u9759\u9ED8\u622A\u65AD\u3002" })
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u804A\u5929\u65F6\u4ECD\u5728\u8F93\u5165\u6846\u9009\u62E9 A\uFF0C\u8FD9\u91CC\u4E0D\u4F1A\u81EA\u52A8\u5207\u6362\u4F1A\u8BDD\u6A21\u578B\u3002\u4FDD\u5B58\u53EA\u5F71\u54CD\u540E\u7EED\u56DE\u590D\uFF0C\u8FDB\u884C\u4E2D\u7684\u6574\u7406\u4FDD\u7559\u539F\u8BBE\u7F6E\u3002B \u4F1A\u589E\u52A0\u4E00\u6B21\u6A21\u578B\u8C03\u7528\u548C\u7B49\u5F85\u65F6\u95F4\uFF1B\u6CA1\u6709\u5339\u914D\u5230 A \u7684\u6A21\u578B\u76F4\u63A5\u663E\u793A\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u804A\u5929\u65F6\u4ECD\u5728\u8F93\u5165\u6846\u9009\u62E9 A\uFF0C\u8FD9\u91CC\u4E0D\u4F1A\u81EA\u52A8\u5207\u6362\u4F1A\u8BDD\u6A21\u578B\u3002\u4FDD\u5B58\u53EA\u5F71\u54CD\u540E\u7EED\u56DE\u590D\uFF0C\u8FDB\u884C\u4E2D\u7684\u6D41\u7A0B\u4FDD\u7559\u539F\u8BBE\u7F6E\u3002B \u4F1A\u589E\u52A0\u8C03\u7528\u8D39\u7528\u548C\u7B49\u5F85\u65F6\u95F4\uFF1B\u6838\u5BF9\u5931\u8D25\u4F1A\u663E\u793A A \u539F\u6587\u3002\u6CA1\u6709\u5339\u914D\u5230 A \u7684\u6A21\u578B\u76F4\u63A5\u663E\u793A\u3002" }),
     invalid && dirty && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", style: { margin: 0, color: "var(--dsw-alias-state-error-primary, #b91c1c)" }, children: invalid }),
     conflict && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: "\u8BBE\u7F6E\u5DF2\u5728\u5176\u4ED6\u9875\u9762\u6216\u914D\u7F6E\u6587\u4EF6\u4E2D\u6539\u53D8\u3002\u8BF7\u5148\u653E\u5F03\u5F53\u524D\u4FEE\u6539\uFF0C\u8BFB\u53D6\u6700\u65B0\u503C\u540E\u518D\u4FDD\u5B58\u3002" }),
     error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: error }),

@@ -21,7 +21,7 @@ export function apply(ctx) {
       if (options.model === 'b') {
         await delay(1000,undefined,{signal:options.signal});
         const data = JSON.parse(options.messages[0].content[0].text);
-        if (data.userQuestion.includes('fail')) throw new Error('mock failure');
+        if (data.userQuestion.includes('fail') && (!data.userQuestion.includes('review-fail') || data.ownDraft)) throw new Error('mock failure');
         yield {type:'text-delta',index:0,text:'建议采用第一种实现。'};
       } else {
         yield {type:'reasoning-delta',index:0,text:'只供验证的思考。'};

@@ -95,3 +95,16 @@ test('failed saves preserve the draft and an unavailable model never erases its 
   assert.ok(view!.root.findAllByProps({role:'alert'}).some(node=>label(node).includes('保存未成功')));
   view!.unmount();
 });
+
+test('UI saves review rounds and large or unlimited budgets without the old caps', async () => {
+  const f = fixture({ enabled: true, rules: [rule], maxInputChars: 30000, maxOutputTokens: 8192 });
+  let view: ReturnType<typeof create>;
+  await act(async () => { view = create(<SettingsView form={f.form} loadCatalog={async () => catalog} />); });
+  const fields = [ ['核对轮数', '3'], ['每次输入字符上限（0 不限）', '0'], ['每次输出 tokens（0 跟随模型）', '100000'] ];
+  for (const [name, value] of fields) act(() => view!.root.findByProps({ 'aria-label': name }).props.onChange({ target: { value } }));
+  assert.equal(f.calls.length, 0);
+  assert.equal(button(view!.root, '保存设置').props.disabled, false);
+  await act(async () => { view!.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
+  assert.deepEqual(f.form.getSnapshot().value, SettingsSchema.parse({ enabled: true, rules: [rule], reviewRounds: 3, maxInputChars: 0, maxOutputTokens: 100000 }));
+  view!.unmount();
+});

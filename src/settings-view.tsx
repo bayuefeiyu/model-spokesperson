@@ -76,10 +76,10 @@ export function SettingsView({ form, loadCatalog }: SettingsViewProps) {
     </label>;
   }
   return <form aria-label="模型嘴替设置" noValidate onSubmit={event => void save(event)} style={{ ...text, padding: '18px 0', display: 'grid', gap: 16 }}>
-    <div><h3 style={{ margin: 0, fontSize: 16 }}>模型与表达</h3><p style={note}>A 负责思考和执行工作，B 只整理面向用户的文字。</p></div>
+    <div><h3 style={{ margin: 0, fontSize: 16 }}>模型与表达</h3><p style={note}>A 负责分析和执行，B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。</p></div>
     {!snapshot.writable && <p role="status" style={note}>当前部署的配置为只读。</p>}
     <fieldset disabled={!writable} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: 'grid', gap: 16 }}>
-      <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" checked={value.enabled} onChange={event => edit(settings => ({ ...settings, enabled: event.target.checked }))} />开启文字整理</label>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" checked={value.enabled} onChange={event => edit(settings => ({ ...settings, enabled: event.target.checked }))} />开启 B 回复</label>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={note}>{catalogStatus === 'loading' ? '正在读取模型列表…' : catalogStatus === 'error' ? '模型列表读取失败，已保留当前配置。' : groups.length === 0 ? '没有可选模型，请先在 DSH 的“设置 → 模型”中配置。' : '从 DSH 已配置的模型中选择。'}{catalog?.failures.length ? ' 部分提供方暂时不可用，已有选择不会被清除。' : ''}</span>
         <button type="button" style={button} onClick={() => setRefresh(value => value + 1)} disabled={catalogStatus === 'loading'}>刷新模型列表</button>
@@ -88,17 +88,18 @@ export function SettingsView({ form, loadCatalog }: SettingsViewProps) {
         <legend>模型映射 {index + 1}</legend>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
           {selector(rule.source, `第 ${index + 1} 组 A 模型（完成工作）`, route => edit(settings => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, source: route } : item) })))}
-          {selector(rule.writer, `第 ${index + 1} 组 B 模型（整理表达）`, route => edit(settings => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, writer: route } : item) })))}
+          {selector(rule.writer, `第 ${index + 1} 组 B 模型（独立作答）`, route => edit(settings => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, writer: route } : item) })))}
         </div>
         <button type="button" style={{ ...button, marginTop: 12 }} onClick={() => edit(settings => ({ ...settings, rules: settings.rules.filter((_, i) => i !== index) }))}>删除第 {index + 1} 组映射</button>
       </fieldset>)}
       <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, rules: [...settings.rules, { source: { provider: '', model: '' }, writer: { provider: '', model: '' } }] }))}>添加模型映射</button></div>
       <label style={{ display: 'grid', gap: 5 }}>表达偏好<textarea aria-label="表达偏好" rows={3} style={control} value={value.style} onChange={event => edit(settings => ({ ...settings, style: event.target.value }))} /></label>
+      <label style={{ display: 'grid', gap: 5 }}>核对轮数<input aria-label="核对轮数" type="number" min={0} step={1} style={control} value={value.reviewRounds} onChange={event => edit(settings => ({ ...settings, reviewRounds: Number(event.target.value) }))} /><span style={note}>先独立起草，再核对 {value.reviewRounds} 轮，共调用 B {value.reviewRounds + 1} 次。设为 0 时只独立起草，不向 B 提供 A 本次报告。每轮核对都在 B 自己的上一稿上完善。</span></label>
       <details><summary style={{ cursor: 'pointer' }}>高级设置</summary><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginTop: 12 }}>
-        {([{ key: 'timeoutMs', label: '整理超时（秒）', scale: 1000, min: 0.001, max: 300 }, { key: 'maxConcurrentRewrites', label: '同时整理数量', scale: 1, min: 1, max: 16 }, { key: 'maxInputChars', label: '最大输入字符数', scale: 1, min: 1, max: 200000 }, { key: 'maxOutputTokens', label: '最大输出 tokens', scale: 1, min: 1, max: 32768 }] as const).map(field => <label key={field.key} style={{ display: 'grid', gap: 5 }}>{field.label}<input aria-label={field.label} type="number" step={field.key === 'timeoutMs' ? 'any' : 1} min={field.min} max={field.max} style={control} value={value[field.key] / field.scale} onChange={event => edit(settings => ({ ...settings, [field.key]: Number(event.target.value) * field.scale }))} /></label>)}
-      </div></details>
+        {([{ key: 'timeoutMs', label: '完整流程超时（秒，0 不限）', scale: 1000, min: 0, max: 2147483.647 }, { key: 'maxConcurrentRewrites', label: '同时处理数量', scale: 1, min: 1, max: 16 }, { key: 'maxInputChars', label: '每次输入字符上限（0 不限）', scale: 1, min: 0, max: Number.MAX_SAFE_INTEGER }, { key: 'maxOutputTokens', label: '每次输出 tokens（0 跟随模型）', scale: 1, min: 0, max: Number.MAX_SAFE_INTEGER }] as const).map(field => <label key={field.key} style={{ display: 'grid', gap: 5 }}>{field.label}<input aria-label={field.label} type="number" step={field.key === 'timeoutMs' ? 'any' : 1} min={field.min} max={field.max} style={control} value={value[field.key] / field.scale} onChange={event => edit(settings => ({ ...settings, [field.key]: Number(event.target.value) * field.scale }))} /></label>)}
+      </div><p style={note}>插件默认不额外限制输入和等待时间，输出上限跟随 B 的模型配置；实际仍受模型及提供方限制。旧设置中的限额会保留，可改为 0。每次输入包含工作上下文，核对时还包含 B 的上一稿和 A 的报告；超过自设上限会回退，不会静默截断。</p></details>
     </fieldset>
-    <p style={note}>聊天时仍在输入框选择 A，这里不会自动切换会话模型。保存只影响后续回复，进行中的整理保留原设置。B 会增加一次模型调用和等待时间；没有匹配到 A 的模型直接显示。</p>
+    <p style={note}>聊天时仍在输入框选择 A，这里不会自动切换会话模型。保存只影响后续回复，进行中的流程保留原设置。B 会增加调用费用和等待时间；核对失败会显示 A 原文。没有匹配到 A 的模型直接显示。</p>
     {invalid && dirty && <p role="alert" style={{ margin: 0, color: 'var(--dsw-alias-state-error-primary, #b91c1c)' }}>{invalid}</p>}
     {conflict && <p role="alert">设置已在其他页面或配置文件中改变。请先放弃当前修改，读取最新值后再保存。</p>}
     {error && <p role="alert">{error}</p>}

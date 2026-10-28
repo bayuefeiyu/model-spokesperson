@@ -10,11 +10,12 @@ export const RuleSchema = z.object({ source: RouteSchema, writer: RouteSchema })
 export const SettingsSchema = z.object({
   enabled: z.boolean().default(false),
   rules: z.array(RuleSchema).default([]),
-  style: z.string().max(4000).default('中文，结论先行，少术语，忠实于原文。'),
-  timeoutMs: z.number().int().min(1).max(300000).default(45000),
+  style: z.string().max(4000).default('中文，结论先行，少术语，清楚自然，事实准确。'),
+  reviewRounds: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(1),
+  timeoutMs: z.number().int().min(0).max(2147483647).default(0),
   maxConcurrentRewrites: z.number().int().min(1).max(16).default(2),
-  maxInputChars: z.number().int().min(1).max(200000).default(30000),
-  maxOutputTokens: z.number().int().min(1).max(32768).default(8192),
+  maxInputChars: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
+  maxOutputTokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
 }).superRefine((config, ctx) => {
   const seen = new Set<string>();
   config.rules.forEach((rule, index) => {
@@ -26,8 +27,14 @@ export const SettingsSchema = z.object({
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
+export const ReportStageSchema = z.object({
+  kind: z.enum(['draft', 'review']), round: z.number().int().min(0),
+  system: z.string(), input: z.string(), startedAt: z.number(),
+  output: z.string().optional(), usage: z.unknown().optional(), finishedAt: z.number().optional(),
+});
+export type ReportStage = z.infer<typeof ReportStageSchema>;
 export const RewriteSchema = z.object({
-  schemaVersion: z.literal(1), policyVersion: z.literal(1), promptVersion: z.literal(1),
+  schemaVersion: z.literal(1), policyVersion: z.union([z.literal(1), z.literal(2)]), promptVersion: z.union([z.literal(1), z.literal(2)]),
   sessionId: z.string(), turn: z.number().int(), step: z.number().int(), attemptId: z.string(),
   source: RouteSchema, writer: RouteSchema,
   status: z.enum(['collecting', 'rewriting', 'ready', 'bypass', 'fallback', 'cancelled']),
@@ -36,6 +43,9 @@ export const RewriteSchema = z.object({
   startedAt: z.number(), finishedAt: z.number().optional(),
   usage: z.unknown().optional(),
   request: z.object({ system: z.string(), input: z.string() }).optional(),
+  phase: z.enum(['drafting', 'reviewing']).optional(),
+  reviewRound: z.number().int().min(0).optional(), reviewRounds: z.number().int().min(0).optional(),
+  stages: z.array(ReportStageSchema).optional(),
 });
 export type Rewrite = z.infer<typeof RewriteSchema>;
 export const ProjectionSchema = z.record(z.string(), RewriteSchema);

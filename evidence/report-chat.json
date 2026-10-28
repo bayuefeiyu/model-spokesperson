@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "runtime": "0.2.1-rc.3",
+  "browser": "headless Microsoft Edge",
+  "checks": [
+    "candidate original never displayed while pending",
+    "drafting and review progress are visible without exposing drafts",
+    "official reasoning disclosure remains usable",
+    "B in original row with working original disclosure",
+    "refresh replays saved rewrite with no new model calls"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}

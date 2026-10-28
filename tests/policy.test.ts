@@ -17,7 +17,9 @@ test('critical content, options and status cannot silently change', () => {
 test('config rejects ambiguous routing and invalid limits', () => {
   assert.equal(SettingsSchema.parse({}).enabled, false);
   assert.equal(SettingsSchema.safeParse({ enabled: true }).success, false);
-  assert.equal(SettingsSchema.safeParse({ timeoutMs: 0 }).success, false);
+  assert.equal(SettingsSchema.safeParse({ timeoutMs: -1 }).success, false);
+  assert.equal(SettingsSchema.safeParse({ timeoutMs: 0, maxInputChars: 0, maxOutputTokens: 0 }).success, true);
+  assert.equal(SettingsSchema.safeParse({ maxInputChars: 4_000_000, maxOutputTokens: 1_000_000, reviewRounds: 3 }).success, true);
   const rule = { source: { provider: 'p', model: 'a' }, writer: { provider: 'p', model: 'b' } };
   assert.equal(SettingsSchema.safeParse({ rules: [rule, rule] }).success, false);
 });

@@ -1,6 +1,6 @@
 {
   "name": "@dsh-plugins/model-spokesperson",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "DeepSeek Harness model spokesperson Host + Client bundle",
   "type": "module",
   "main": "lib/index.js",

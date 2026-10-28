@@ -1,0 +1,99 @@
+{
+  "validationDate": "2026-10-28",
+  "version": "0.2.0",
+  "runtime": "0.2.1-rc.3",
+  "checks": {
+    "typecheck": "pass",
+    "tests": {
+      "pass": 36,
+      "fail": 0
+    },
+    "build": "pass",
+    "settings": {
+      "version": "0.2.0",
+      "profile": "spokesperson-report",
+      "checks": [
+        "A/B selections stay staged until Save",
+        "native settings save persists to active profile",
+        "reload restores the selected routes and style",
+        "next answer uses saved B/style/100000 tokens and two reviews; draft excludes A report",
+        "disabling in the UI stops B on the next answer"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "restart": {
+      "version": "0.2.0",
+      "profile": "spokesperson-report",
+      "checks": [
+        "saved settings survive process restart"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "chat": {
+      "version": "0.2.0",
+      "runtime": "0.2.1-rc.3",
+      "browser": "headless Microsoft Edge",
+      "checks": [
+        "candidate original never displayed while pending",
+        "drafting and review progress are visible without exposing drafts",
+        "official reasoning disclosure remains usable",
+        "B in original row with working original disclosure",
+        "refresh replays saved rewrite with no new model calls"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "reviewFailure": {
+      "fallbackToOriginal": true,
+      "reviewFailed": true,
+      "modelCalls": 3,
+      "sourceRepeated": false,
+      "pageErrors": [],
+      "realApiCalls": 0
+    },
+    "tarballManager": {
+      "version": "0.2.0",
+      "source": "tarball",
+      "bundleRecognized": true,
+      "components": [
+        "model-spokesperson-host",
+        "model-spokesperson-ui"
+      ],
+      "bundleDisabledAndReenabled": true,
+      "pageErrors": []
+    }
+  },
+  "artifact": {
+    "path": "dist/dsh-plugins-model-spokesperson-0.2.0.tgz",
+    "bytes": 50883,
+    "sha256": "d6387c0ad7ae00989e1d807d9eafe7fb242d01ad76fdcb076f0c539ba33b7ca4",
+    "installedCodeMatches": true
+  },
+  "sourceChecksums": {
+    "src/client.ts": "5c3485f4c8617e56ed173e2e3f943aad9afcd49153b0cffb3f1be5f45c427b2c",
+    "src/config.ts": "2be45624492330df19e1f99e5918e7bcc3531d91aca324592c86139eb8fa3358",
+    "src/contract.ts": "1c58d7c203eafbbf4498ac23fa72f8883393fc9ff51258e5508d0e2a8e55f947",
+    "src/host-types.ts": "27c89fd26392bebd1e5b50b918d267e6783f313f05bb7a5336017b25a647855f",
+    "src/host.ts": "14bc6f73e8c8d8bfd33184c1262f5d0a20b5cce6ecd244b47b31d078878f4fcf",
+    "src/policy.ts": "eee21ea8edd84662fcd6a6cd703b8ba2a47e1c9342ba50de80fa647861e67b56",
+    "src/presentation.tsx": "06e0d0fee66832b73ca9ec1677033adf1d5d9c2f34a7326856dc11fcaa838e3e",
+    "src/projection.ts": "03f48163a1707b27d5178bb431533388165b1f2768013ae7126582344928d981",
+    "src/prompt.ts": "310eba8af446d357a8ca15a47a625cb7faf61a33c1f32e057d5e581b2b8a8082",
+    "src/queue.ts": "94a2120f430e1caf3a2d695fdc13ba596b72606e9b10a10f656b1938a111206e",
+    "src/settings-client.ts": "abbe71eabaac24f6ce6f312b7c05193556c8eeb7a4550ccae72f5f2ed87b7505",
+    "src/settings-view.tsx": "fc0ba263d934ba8e24bee3b7d26ef6b5863bfbca861150c70f89265de66a1780",
+    "src/work-context.ts": "d949f53486694417a7201abe70eeeca06ba8e43a51d083d964801bad80336647",
+    "tests/client.test.tsx": "4546bdcf5b735b62f357093020a217bcc76b5368fdb47c513b4d80a5340d3088",
+    "tests/distribution.test.ts": "16c3f31b9491a329f8824a17a2f08243b2369f65fdc968ea92bd87837d8137b0",
+    "tests/host.test.ts": "7a6664fe071279f1d45ba8b316c721b471ece967d8b2dab1cef1a95e51cc96d5",
+    "tests/policy.test.ts": "728c833eb51b5279f3fb595ac8f0980c975967554e1385586d550495dae947b7",
+    "tests/presentation.test.tsx": "eb5671d17f13c38cc06609a7fe0a7d0c5493e5e7b54cb9a778a4f2f2a526e95b",
+    "tests/settings.test.tsx": "83401027d538299b9115448e484ef1f93c41676310ff727d7d6a3451f5c1f37e",
+    "tests/work-context.test.ts": "00bed1faa4347d6445b63a55883c8d267f8feacb6c6b5f9a6e18bc3e712a650d"
+  },
+  "realModelApiCalls": 0,
+  "dailyInstallationModified": false,
+  "dailyProfileModified": false
+}

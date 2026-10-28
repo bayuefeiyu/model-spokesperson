@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { readFile, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const profile = process.argv[3] ?? 'spokesperson-ui';
+const profile = process.argv[3] ?? 'spokesperson-report';
 const verifyOnly = process.argv.includes('--verify-only');
 const configPath = '.dev/runtime/spokesperson-home/profiles/'+profile+'/cordis.patch.yml';
 const calls = async () => (await readFile('.dev/workspace/calls.jsonl','utf8')).trim().split('\n').filter(Boolean).map(line=>JSON.parse(line));
@@ -26,23 +26,26 @@ try {
     await page.getByRole('status').filter({hasText:'已保存'}).waitFor({timeout:15000});
   }
   async function verify(){
-    assert.ok(await page.getByRole('checkbox',{name:'开启文字整理'}).isChecked());
+    assert.ok(await page.getByRole('checkbox',{name:'开启 B 回复'}).isChecked());
     assert.equal(await page.getByLabel('第 1 组 A 模型（完成工作）').inputValue(),JSON.stringify(['spokesperson-mock','a']));
-    assert.equal(await page.getByLabel('第 1 组 B 模型（整理表达）').inputValue(),JSON.stringify(['spokesperson-mock','b']));
+    assert.equal(await page.getByLabel('第 1 组 B 模型（独立作答）').inputValue(),JSON.stringify(['spokesperson-mock','b']));
     assert.equal(await page.getByLabel('表达偏好').inputValue(),'结论先行，保留事实。');
+    assert.equal(await page.getByLabel('核对轮数',{exact:true}).inputValue(),'2');
+    assert.equal(await page.getByLabel('每次输入字符上限（0 不限）').inputValue(),'0');
   }
   await openSettings();
   if(verifyOnly){await verify();checks.push('saved settings survive process restart');}
   else{
     const before=await readFile(configPath,'utf8');
-    assert.equal(await page.getByRole('checkbox',{name:'开启文字整理'}).isChecked(),false);
+    assert.equal(await page.getByRole('checkbox',{name:'开启 B 回复'}).isChecked(),false);
     await page.getByRole('button',{name:'添加模型映射',exact:true}).click();
     await page.getByLabel('第 1 组 A 模型（完成工作）').selectOption(JSON.stringify(['spokesperson-mock','a']));
-    await page.getByLabel('第 1 组 B 模型（整理表达）').selectOption(JSON.stringify(['spokesperson-mock','b']));
-    await page.getByRole('checkbox',{name:'开启文字整理'}).check();
+    await page.getByLabel('第 1 组 B 模型（独立作答）').selectOption(JSON.stringify(['spokesperson-mock','b']));
+    await page.getByRole('checkbox',{name:'开启 B 回复'}).check();
     await page.getByLabel('表达偏好').fill('结论先行，保留事实。');
+    await page.getByLabel('核对轮数',{exact:true}).fill('2');
     await page.getByText('高级设置',{exact:true}).click();
-    await page.getByLabel('最大输出 tokens').fill('256');
+    await page.getByLabel('每次输出 tokens（0 跟随模型）').fill('100000');
     assert.equal(await readFile(configPath,'utf8'),before);
     checks.push('A/B selections stay staged until Save');
     await saved();
@@ -56,11 +59,16 @@ try {
     await page.getByRole('button',{name:'发送消息',exact:true}).click();
     await page.locator('[data-model-spokesperson="ready"]').waitFor({timeout:15000});
     const after=(await calls()).slice(start);
-    assert.deepEqual(after.map(call=>call.model),['a','b']);
+    assert.deepEqual(after.map(call=>call.model),['a','b','b','b']);
     assert.ok(after[1].system.includes('结论先行，保留事实。'));
-    assert.equal(after[1].maxTokens,256);
-    checks.push('next answer uses the saved B, style and output budget without restart');
-    await openSettings();await page.getByRole('checkbox',{name:'开启文字整理'}).uncheck();await saved();
+    assert.equal(after[1].maxTokens,100000);
+    const input=call=>JSON.parse(call.messages[0].content[0].text);
+    assert.ok(!JSON.stringify(input(after[1])).includes('针对当前事项，综合考量后建议采用第一种实现。'));
+    assert.equal(input(after[2]).ownDraft,'建议采用第一种实现。');
+    assert.equal(input(after[2]).sourceReport,'针对当前事项，综合考量后建议采用第一种实现。');
+    assert.equal(input(after[3]).reviewRound,2);
+    checks.push('next answer uses saved B/style/100000 tokens and two reviews; draft excludes A report');
+    await openSettings();await page.getByRole('checkbox',{name:'开启 B 回复'}).uncheck();await saved();
     const offStart=(await calls()).length;
     await page.getByText('新会话',{exact:true}).first().click();
     await page.locator('[contenteditable="true"]').first().fill('请解释关闭后的行为');
@@ -68,12 +76,12 @@ try {
     await page.getByText('针对当前事项，综合考量后建议采用第一种实现。',{exact:true}).waitFor({timeout:15000});
     assert.deepEqual((await calls()).slice(offStart).map(call=>call.model),['a']);
     checks.push('disabling in the UI stops B on the next answer');
-    await openSettings();await page.getByRole('checkbox',{name:'开启文字整理'}).check();await saved();await verify();
+    await openSettings();await page.getByRole('checkbox',{name:'开启 B 回复'}).check();await saved();await verify();
   }
   assert.deepEqual(errors,[]);
-  await page.screenshot({path:'evidence/settings-ui.png',fullPage:true});
-  const result={version:'0.1.2',profile,checks,pageErrors:errors,realApiCalls:0};
-  await writeFile(verifyOnly?'evidence/settings-restart.json':'evidence/settings-ui.json',JSON.stringify(result,null,2)+'\n');
+  await page.screenshot({path:'evidence/report-settings.png',fullPage:true});
+  const result={version:'0.2.0',profile,checks,pageErrors:errors,realApiCalls:0};
+  await writeFile(verifyOnly?'evidence/report-settings-restart.json':'evidence/report-settings.json',JSON.stringify(result,null,2)+'\n');
   console.log(JSON.stringify(result));
 }catch(error){
   const page=browser.contexts()[0]?.pages()[0];

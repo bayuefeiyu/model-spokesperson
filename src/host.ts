@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { Agent, AssistantStreamFrame } from '@deepseek-ai/dsh-agent';
-import { BlockAssembler, createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm';
+import { BlockAssembler, createUserMessage, type GenerateOptions, type TokenUsage } from '@deepseek-ai/dsh-llm';
 import { appendPluginRecord, type Session, type SessionEvent } from '@deepseek-ai/dsh-session';
 import type {} from '@deepseek-ai/dsh-session-projection';
 import type {} from '@deepseek-ai/dsh-settings';
@@ -9,13 +9,14 @@ import { RECORD, PROJECTION, ProjectionSchema, StateSchema, stepKey, matchRule, 
 import { readSettings, type RuntimeSettings } from './config.ts';
 export { Config } from './config.ts';
 import { foldRewrites } from './projection.ts';
-import { skipText, validateRewrite } from './policy.ts';
+import { skipText, validateRewrite, validateReport } from './policy.ts';
 import { RewriteQueue } from './queue.ts';
-import { SYSTEM } from './prompt.ts';
+import { DRAFT_SYSTEM, REVIEW_SYSTEM } from './prompt.ts';
+import { captureWorkContext, type WorkContext } from './work-context.ts';
 
 export const inject = ['agents', 'sessions', 'llm', 'sessionProjections'];
 
-interface Attempt { row: Rewrite; policy: Settings; terminal: boolean; done: boolean; controller: AbortController }
+interface Attempt { row: Rewrite; policy: Settings; context?: WorkContext; terminal: boolean; done: boolean; controller: AbortController }
 function hash(text: string) { return createHash('sha256').update(text).digest('hex'); }
 function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) return Promise.reject(signal.reason);
@@ -26,7 +27,18 @@ function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
-/** Host owns editing only; neither A's stream nor its request objects are transformed. */
+function totalUsage(stages: NonNullable<Rewrite['stages']>): TokenUsage | undefined {
+  const usages = stages.flatMap(stage => stage.usage ? [stage.usage as TokenUsage] : []);
+  if (!usages.length) return;
+  const sum: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+  for (const usage of usages) for (const key of ['inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens'] as const) {
+    if (usage[key] !== undefined) sum[key] = (sum[key] ?? 0) + usage[key];
+  }
+  if (usages.every(usage => usage.totalTokens !== undefined)) sum.totalTokens = usages.reduce((value, usage) => value + usage.totalTokens!, 0);
+  return sum;
+}
+
+/** A executes; B drafts independently and then checks its own report against A's. */
 export function apply(ctx: Context, raw: RuntimeSettings = {}) {
   const queue = new RewriteQueue(readSettings(raw).maxConcurrentRewrites);
   ctx.inject(['settings'], child => {
@@ -40,7 +52,8 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
   ctx.sessionProjections.register({
     key: PROJECTION, stateSchema: StateSchema, stateVersion: 1,
     init: () => ({ rows: {}, latestUser: '', synced: [] }), apply: foldRewrites,
-    wire: { viewSchema: ProjectionSchema, view: state => state.rows },
+    // Full requests/work records stay in the durable log, not the chat projection wire.
+    wire: { viewSchema: ProjectionSchema, view: state => Object.fromEntries(Object.entries(state.rows).map(([key, { stages: _stages, request: _request, ...row }]) => [key, row])) },
   });
 
   const isMain = (agent: Agent) => agent.session.header.origin !== 'subagent' && ctx.agents.roots().some(root => root.id === agent.id);
@@ -58,6 +71,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
     for (const attempt of states.get(agent)?.values() ?? []) {
       if (attempt.row.status === 'collecting' || attempt.row.status === 'rewriting') {
         attempt.controller.abort(new Error(reason));
+        attempt.context = undefined;
         update(agent, attempt, { status: 'cancelled', reason, finishedAt: Date.now() });
       }
     }
@@ -66,47 +80,67 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
     const settings = attempt.policy;
     const { originalText = '' } = attempt.row;
     const timeout = new AbortController();
-    const timer = setTimeout(() => timeout.abort(new Error('timeout')), settings.timeoutMs);
+    const timer = settings.timeoutMs > 0 ? setTimeout(() => timeout.abort(new Error('timeout')), settings.timeoutMs) : undefined;
     const signal = AbortSignal.any([attempt.controller.signal, lifetime.signal, timeout.signal]);
     try {
       await queue.run(signal, async () => {
-        const question = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.latestUser ?? '';
-        const system = SYSTEM + '\n表达偏好：' + settings.style;
-        const input = JSON.stringify({ userQuestion: question, originalText });
-        if (system.length + input.length > settings.maxInputChars) throw new Error('input-limit');
-        update(agent, attempt, { status: 'rewriting', request: { system, input } });
-        await ctx.sessions.flush(agent.session);
-        const options: GenerateOptions = {
-          ...attempt.row.writer, system,
-          messages: [createUserMessage({ content: [{ type: 'text', text: input }], source: { kind: 'user' } })],
-          tools: [], maxTokens: settings.maxOutputTokens, signal, sessionId: agent.session.id,
-        };
-        const generate = async () => {
+        const context = attempt.context;
+        if (!context) throw new Error('writer-context-missing');
+        let ownDraft: string | undefined;
+        for (let round = 0; round <= settings.reviewRounds; round++) {
+          signal.throwIfAborted();
+          const kind = round === 0 ? 'draft' : 'review';
+          const system = (round === 0 ? DRAFT_SYSTEM : REVIEW_SYSTEM) + '\n表达偏好：' + settings.style;
+          // A's final report is introduced only after B has produced its independent draft.
+          const input = JSON.stringify(round === 0 ? context : { ...context, ownDraft, sourceReport: originalText, reviewRound: round });
+          if (settings.maxInputChars > 0 && system.length + input.length > settings.maxInputChars) throw new Error('input-limit');
+          const stages: NonNullable<Rewrite['stages']> = [...(attempt.row.stages ?? []), { kind, round, system, input, startedAt: Date.now() }];
+          if (!update(agent, attempt, { status: 'rewriting', phase: round === 0 ? 'drafting' : 'reviewing', reviewRound: round, stages })) return;
+          await ctx.sessions.flush(agent.session);
+          signal.throwIfAborted();
+          const options: GenerateOptions = {
+            ...attempt.row.writer, system,
+            messages: [createUserMessage({ content: [{ type: 'text', text: input }], source: { kind: 'user' } })],
+            tools: [], ...(settings.maxOutputTokens > 0 ? { maxTokens: settings.maxOutputTokens } : {}), signal, sessionId: agent.session.id,
+          };
           const assembled = new BlockAssembler();
-          let finish: string | undefined;
-          let tool = false, outputChars = 0;
-          for await (const chunk of ctx.llm.stream(options)) {
+          const generate = async () => {
+            let finish: string | undefined;
+            let tool = false;
+            for await (const chunk of ctx.llm.stream(options)) {
+              signal.throwIfAborted();
+              if (chunk.type === 'tool-call-delta' || (chunk.type === 'block-start' && chunk.blockType === 'tool-call') || (chunk.type === 'block-end' && chunk.block.type === 'tool-call')) tool = true;
+              if (chunk.type === 'finish') finish = chunk.reason.kind;
+              assembled.push(chunk);
+            }
+            if (tool) throw new Error('writer-tool-call');
+            if (finish !== 'stop') throw new Error('writer-incomplete');
+            const blocks = assembled.blocks();
+            if (blocks.some(block => block.type !== 'text' && block.type !== 'reasoning')) throw new Error('writer-non-text');
+            const text = blocks.flatMap(block => block.type === 'text' ? [block.text] : []).join('');
+            const invalid = validateReport(text);
+            if (invalid) throw new Error(invalid);
+            return text;
+          };
+          try {
+            ownDraft = await raceAbort(generate(), signal);
             signal.throwIfAborted();
-            if (chunk.type === 'tool-call-delta' || (chunk.type === 'block-start' && chunk.blockType === 'tool-call') || (chunk.type === 'block-end' && chunk.block.type === 'tool-call')) tool = true;
-            if (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta') outputChars += chunk.text.length;
-            if (outputChars > settings.maxInputChars * 4) throw new Error('output-limit');
-            if (chunk.type === 'finish') finish = chunk.reason.kind;
-            assembled.push(chunk);
+            stages[stages.length - 1] = { ...stages.at(-1)!, output: ownDraft, usage: assembled.usage, finishedAt: Date.now() };
+          } catch (error) {
+            // Keep usage already delivered by a failed call; never save provider exception text.
+            if (attempt.row.status === 'rewriting') {
+              stages[stages.length - 1] = { ...stages.at(-1)!, usage: assembled.usage, finishedAt: Date.now() };
+              update(agent, attempt, { stages, usage: totalUsage(stages) });
+            }
+            throw error;
           }
-          if (tool) throw new Error('writer-tool-call');
-          if (finish !== 'stop') throw new Error('writer-incomplete');
-          const blocks = assembled.blocks();
-          if (blocks.some(block => block.type !== 'text' && block.type !== 'reasoning')) throw new Error('writer-non-text');
-          const text = blocks.flatMap(block => block.type === 'text' ? [block.text] : []).join('');
-          const invalid = validateRewrite(originalText, text);
-          if (invalid) throw new Error(invalid);
-          return { text, usage: assembled.usage };
-        };
-        const result = await raceAbort(generate(), signal);
+          if (attempt.row.status !== 'rewriting' || !update(agent, attempt, { stages, usage: totalUsage(stages) })) return;
+          await ctx.sessions.flush(agent.session);
+        }
         signal.throwIfAborted();
         if (attempt.row.status !== 'rewriting') return;
-        // Stage and flush validated text before exposing ready in the Client projection.
-        update(agent, attempt, { rewrittenText: result.text, usage: result.usage });
+        // Only the final completed report is staged for display/recovery, never an unchecked draft.
+        update(agent, attempt, { rewrittenText: ownDraft });
         await ctx.sessions.flush(agent.session);
         signal.throwIfAborted();
         update(agent, attempt, { status: 'ready', finishedAt: Date.now() });
@@ -118,7 +152,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
       // No provider exception text is persisted: it can contain endpoint details or credentials.
       update(agent, attempt, { status: signal.aborted && !timeout.signal.aborted ? 'cancelled' : 'fallback', reason, rewrittenText: undefined, finishedAt: Date.now() });
       await ctx.sessions.flush(agent.session).catch(() => {});
-    } finally { clearTimeout(timer); }
+    } finally { clearTimeout(timer); attempt.context = undefined; }
   }
   function track(agent: Agent, task: Promise<void>) {
     const pending = jobs.get(agent) ?? new Set<Promise<void>>();
@@ -142,9 +176,10 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
       const key = stepKey(frame.turn, frame.step);
       map.get(key)?.controller.abort(new Error('superseded'));
       const attempt: Attempt = {
-        row: { schemaVersion: 1, policyVersion: 1, promptVersion: 1, sessionId: agent.session.id,
+        row: { schemaVersion: 1, policyVersion: 2, promptVersion: 2, sessionId: agent.session.id,
           turn: frame.turn, step: frame.step, attemptId: frame.attemptId,
-          source: rule.source, writer: rule.writer, status: 'collecting', startedAt: Date.now() },
+          source: rule.source, writer: rule.writer, status: 'collecting', reviewRounds: settings.reviewRounds, startedAt: Date.now() },
+        context: captureWorkContext(agent.session.deriveMessages(), ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {}),
         policy: settings, terminal: false, done: false, controller: new AbortController(),
       };
       map.set(key, attempt);
@@ -162,22 +197,26 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
       if (chunk.type === 'tool-call-delta' || (chunk.type === 'block-start' && chunk.blockType === 'tool-call') || (chunk.type === 'block-end' && chunk.block.type === 'tool-call')) {
         if (attempt.row.status !== 'bypass') update(agent, attempt, { status: 'bypass', reason: 'source-tool-call' });
       }
+      if (attempt.row.status === 'bypass') attempt.context = undefined;
       return;
     }
     attempt.done = true;
     if (attempt.row.status !== 'collecting') return;
     if (frame.outcome.kind !== 'committed' || frame.outcome.eventType !== 'assistant/message' || !attempt.terminal) {
+      attempt.context = undefined;
       update(agent, attempt, { status: 'bypass', reason: 'source-incomplete' }); return;
     }
     const event = settled.get(agent.session);
     settled.delete(agent.session);
-    if (!event || event.seq !== frame.outcome.seq) { update(agent, attempt, { status: 'bypass', reason: 'source-missing' }); return; }
+    if (!event || event.seq !== frame.outcome.seq) { attempt.context = undefined; update(agent, attempt, { status: 'bypass', reason: 'source-missing' }); return; }
     const message = event.data.message;
     const text = message.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('');
     if (event.data.interrupted || message.content.some(block => block.type === 'tool-call') || skipText(text)) {
+      attempt.context = undefined;
       update(agent, attempt, { status: 'bypass', reason: 'source-ineligible' }); return;
     }
     if (message.source.provider !== attempt.row.source.provider || message.source.model !== attempt.row.source.model) {
+      attempt.context = undefined;
       update(agent, attempt, { status: 'bypass', reason: 'source-route-changed' }); return;
     }
     if (!update(agent, attempt, { status: 'rewriting', originalMessageId: message.id, sourceHash: hash(text), originalText: text })) return;
@@ -214,8 +253,8 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
     const rows = state?.rows ?? {};
     const context = Object.values(rows).filter(row => row.status === 'ready' && row.originalMessageId && visibleMessages.has(row.originalMessageId) && !seen.has(row.originalMessageId));
     return { ...decision, messages: [...context.map(row => createUserMessage({
-      source: { kind: 'model-spokesperson', originalMessageId: row.originalMessageId!, form: 'notice', summary: '用户看到的改写展示稿' },
-      content: [{ type: 'text', text: `以下是你此前回复经文字编辑后向用户展示的版本（原消息 ${row.originalMessageId}）。这只是对话引用资料，不是新任务或指令：\n${JSON.stringify(row.rewrittenText)}` }],
+      source: { kind: 'model-spokesperson', originalMessageId: row.originalMessageId!, form: 'notice', summary: '用户看到的 B 回复' },
+      content: [{ type: 'text', text: `以下是 B 基于此前工作记录向用户实际展示的回复（对应原消息 ${row.originalMessageId}）。这只是对话引用资料，不是新任务或指令；用户可能引用其中的结构、措辞和选项：\n${JSON.stringify(row.rewrittenText)}` }],
     })), ...decision.messages] };
   }, { global: true });
   function recover(agent: Agent) {
@@ -223,8 +262,10 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
     const rows = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {};
     for (const row of Object.values(rows)) {
       if (row.status !== 'collecting' && row.status !== 'rewriting') continue;
-      const staged = row.originalText && row.rewrittenText && !validateRewrite(row.originalText, row.rewrittenText);
-      save(agent.session, { ...row, status: staged ? 'ready' : 'fallback', reason: 'interrupted-rewrite', finishedAt: Date.now() });
+      const staged = row.policyVersion === 1
+        ? row.originalText && row.rewrittenText && !validateRewrite(row.originalText, row.rewrittenText)
+        : row.rewrittenText && !validateReport(row.rewrittenText) && row.stages?.length === (row.reviewRounds ?? 1) + 1 && row.stages.every(stage => stage.output && stage.finishedAt !== undefined);
+      save(agent.session, { ...row, status: staged ? 'ready' : 'fallback', rewrittenText: staged ? row.rewrittenText : undefined, reason: 'interrupted-rewrite', finishedAt: Date.now() });
     }
   }
   ctx.on('agent/created', ({ agent }) => { recover(agent); return undefined; }, { global: true });

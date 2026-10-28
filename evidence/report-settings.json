@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "profile": "spokesperson-report",
+  "checks": [
+    "A/B selections stay staged until Save",
+    "native settings save persists to active profile",
+    "reload restores the selected routes and style",
+    "next answer uses saved B/style/100000 tokens and two reviews; draft excludes A report",
+    "disabling in the UI stops B on the next answer"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}
