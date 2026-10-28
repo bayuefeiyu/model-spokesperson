@@ -42,7 +42,23 @@
       ],
       "pageErrors": [],
       "realApiCalls": 0
+    },
+    "githubManager": {
+      "version": "0.1.2",
+      "source": "github",
+      "bundleRecognized": true,
+      "components": [
+        "model-spokesperson-host",
+        "model-spokesperson-ui"
+      ],
+      "bundleDisabledAndReenabled": true,
+      "pageErrors": []
     }
+  },
+  "githubSource": {
+    "url": "https://github.com/bayuefeiyu/model-spokesperson",
+    "testedCommit": "655efbd",
+    "settingsRestored": true
   },
   "artifact": {
     "path": "dist/dsh-plugins-model-spokesperson-0.1.2.tgz",

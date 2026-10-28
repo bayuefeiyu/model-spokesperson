@@ -17,6 +17,7 @@
 - 无需重启，下一条回复实际调用 mock a 和 b；B 请求使用新文风和 256 token 输出限额。关闭整理后下一条回复只调用 a。
 - 重启整个服务，已保存配置仍保留。结果见 settings-restart.json。
 - 原生插件管理器的组合包关闭/重新启用和既有聊天 e2e 仍通过，浏览器均无 pageerror 或 console error。
+- 最终 tarball 重新安装后配置和聊天回归通过，安装内容与构建产物逐项摘要一致。随后直接从 GitHub 仓库 URL 安装 feature commit 655efbd，原生设置页面、保存配置恢复与管理器启停再次通过。
 
 隔离 profile 为 spokesperson-ui，home 在 .dev/runtime/spokesperson-home，Web 端口 31949，工作区在 .dev/documents。仅调用本地 mock，没有真实模型费用，没有修改日常桌面配置。截图见 settings-ui.png。既有真实模型、完整桌面/附件/多客户端质量验收边界保持不变。
 
