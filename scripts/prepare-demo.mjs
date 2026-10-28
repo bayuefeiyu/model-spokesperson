@@ -2,7 +2,9 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const runtime = resolve(root, '.dev/runtime');
-const profile = resolve(root, '.dev/runtime/spokesperson-home/profiles/spokesperson-dev');
+const profileName = process.argv[2] ?? 'spokesperson-dev';
+if (!/^[a-zA-Z0-9_-]+$/.test(profileName)) throw new Error('Invalid test profile name');
+const profile = resolve(root, '.dev/runtime/spokesperson-home/profiles', profileName);
 await mkdir(profile, { recursive: true });
 await writeFile(resolve(runtime, 'spokesperson-mock.mjs'), `
 import { LlmAdapter, isAgentLoopRequest } from '@deepseek-ai/dsh-llm';

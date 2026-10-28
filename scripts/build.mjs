@@ -9,6 +9,6 @@ await build({ entryPoints: ['src/client.ts'], outfile: 'packages/ui/lib/client.j
   banner: { js: `window.__ModuleLoader__.load({id:${JSON.stringify(name)},factory:(require)=>{const module={exports:{}};const exports=module.exports;` },
   footer: { js: 'return module.exports;}});' },
 });
-await mkdir('packages/bundle/lib', { recursive: true });
-await writeFile('packages/bundle/lib/index.js', 'export {};\n');
+await mkdir('lib', { recursive: true });
+await writeFile('lib/index.js', 'export function apply() {}\n');
 console.log('Built Host ESM and Client module-loader bundle; all Host shared modules remain external.');

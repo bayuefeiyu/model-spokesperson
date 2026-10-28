@@ -1,5 +1,6 @@
 {
-  "name": "@dsh-plugins/model-spokesperson-host", "version": "0.1.0", "type": "module",
+  "name": "@dsh-plugins/model-spokesperson-host", "version": "0.1.1", "type": "module",
+  "engines": { "dsh": "0.2.1-rc.3" },
   "description": "A works; B edits user-facing prose without tools",
   "main": "lib/index.js", "exports": { ".": "./lib/index.js", "./package.json": "./package.json" },
   "files": ["lib"],

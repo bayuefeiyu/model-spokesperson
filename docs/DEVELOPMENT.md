@@ -12,7 +12,7 @@ rtk proxy npm run build
 rtk proxy npm run pack:plugin
 ```
 
-Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试使用官方 AgentLoop testkit、真实 Cordis、React 和 SlotCore。产物包含两个完整子包。不要启用 npm workspaces；DSH installation-first 解析会优先找到开发链接而遮蔽安装包。
+Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试使用官方 AgentLoop testkit、真实 Cordis、React 和 SlotCore。根 package.json/cordis.patch.yml 是分发入口，GitHub 和 tarball 共用布局。构建后的 lib/index.js、packages/host/lib、packages/ui/lib 必须随 Git 提交，因为仓库 URL 安装不依赖执行生命周期构建。不要启用 npm workspaces，避免遮蔽隔离安装包。
 
 ## 准备独立运行时
 
@@ -22,7 +22,7 @@ Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试�
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/inspect-runtime.py --installation "G:\ai\harness\dsh desktop" --output evidence/runtime-inspection.json
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/prepare-runtime.py
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --from-default-profile web --dump-config
-rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.1.0.tgz
+rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.1.1.tgz
 rtk proxy node scripts/prepare-demo.mjs
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --port 31947 --no-open
 ```

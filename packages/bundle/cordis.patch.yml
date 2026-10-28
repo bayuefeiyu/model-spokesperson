@@ -1,8 +1,0 @@
-- insert:
-    - id: model-spokesperson-host
-      name: './node_modules/@dsh-plugins/model-spokesperson-host/lib/index.js'
-      config:
-        enabled: false
-        rules: []
-    - id: model-spokesperson-ui
-      name: './node_modules/@dsh-plugins/model-spokesperson-ui/lib/index.js'

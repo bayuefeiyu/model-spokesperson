@@ -1,0 +1,8 @@
+- insert:
+    - id: model-spokesperson-host
+      name: './packages/host/lib/index.js'
+      config:
+        enabled: false
+        rules: []
+    - id: model-spokesperson-ui
+      name: './packages/ui/lib/index.js'

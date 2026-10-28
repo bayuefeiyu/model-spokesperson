@@ -1,12 +1,12 @@
 # 开发交接
 
-用户要求完成开发，现已实现 Host + Web Client bundle 0.1.0，针对 DSH 0.2.1-rc.3。交付安装包 dist/dsh-plugins-model-spokesperson-0.1.0.tgz；使用步骤见 README。
+当前版本 0.1.1，针对 DSH 0.2.1-rc.3。交付安装包 dist/dsh-plugins-model-spokesperson-0.1.1.tgz；使用步骤见 README。该版本修复 GitHub URL 安装不识别组合包的问题，见 evidence/distribution-fix.md。
 
 ## 已实现
 
 精确路由、纯文字筛选、工具直通、无工具 B、预算/超时/取消/FIFO 并发、失败回退、独立 usage、原消息和 replayState 保留、插件记录持久化及 projection、原行展示/原文/复制、下次输入的日志化展示稿同步。未修改 agent-loop、日常 ASAR 或日常配置。
 
-src/host.ts 是入口，contract.ts 管理版本和 schema，policy.ts 保护关键内容，projection.ts 增量折叠，client.ts 包装官方 slot，presentation.tsx 仅构造渲染副本。packages 为两个实现包和一个内含依赖的 bundle；scripts 提供构建、打包、ASAR 检查、运行时复制、隔离启动、mock 和浏览器验收。
+src/host.ts 是入口，contract.ts 管理版本和 schema，policy.ts 保护关键内容，projection.ts 增量折叠，client.ts 包装官方 slot，presentation.tsx 仅构造渲染副本。根 package.json 和 cordis.patch.yml 是唯一组合包入口，packages/host 与 packages/ui 含两个实现。预构建文件随源码提交，GitHub URL 安装不运行构建；scripts/pack.mjs 直接打包仓库根目录。
 
 ## 验证与复现
 

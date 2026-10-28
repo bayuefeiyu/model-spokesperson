@@ -40,4 +40,4 @@ B 完成不唤醒 A。下次有真实输入的 agent/pre-step 等待本 agent �
 
 ## 打包
 
-bundle 携带 Host ESM 与 Client module-loader 产物。patch 用包内相对入口，防止导入开发同名包。DSH/Cordis/React/Zod 全部 external，保留精确 peer/engine 兼容检查。隔离 home 放在提取 runtime 下，使插件共享宿主模块实例。
+从 0.1.1 起，仓库根清单直接声明 dsh.bundle.patch，根 cordis.patch.yml 使用 packages/host/lib 和 packages/ui/lib 的相对入口。Git 提交预构建 Host ESM 与 Client module-loader 产物，tarball 从同一根目录打包，不再单独生成另一份组合包清单。DSH/Cordis/React/Zod 全部 external，保留精确 peer/engine 兼容检查。隔离 home 放在提取 runtime 下，使插件共享宿主模块实例。

@@ -2,7 +2,7 @@
 
 指定模型 A 完成工作，模型 B 只整理 A 面向用户的文字。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-已实现原生 Host + Web Client bundle **0.1.0**，验证目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。安装包：`dist/dsh-plugins-model-spokesperson-0.1.0.tgz`。
+已实现原生 Host + Web Client bundle **0.1.1**，验证目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。安装包：`dist/dsh-plugins-model-spokesperson-0.1.1.tgz`。
 
 GitHub 私有仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
@@ -21,9 +21,15 @@ GitHub 私有仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 
 使用目标 DSH 安装自带的 CLI 安装到指定 profile（`dsh` 代表该 CLI；本机 shell 使用 RTK）：
 
+在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.1.1`。私有仓库需要安装环境已登录有权限的 GitHub 账号。仓库根目录现已声明组合包并包含预构建入口，无须安装时运行构建脚本。
+
 ```powershell
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.1.0.tgz
+rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.1.1
+# 也可下载 Release 安装包后使用本地路径：
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.1.1.tgz
 ```
+
+如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。
 
 在该 profile 的 `cordis.patch.yml` 加入或合并：
 
@@ -64,6 +70,8 @@ rtk proxy npm run pack:plugin
 ```
 
 已有真实 AgentLoop 的 mock 测试、React/SlotCore 测试和隔离 Web 浏览器验收。具体范围见 [验收记录](evidence/validation.md)、[开发步骤](docs/DEVELOPMENT.md)、[交接](HANDOFF.md)。未调用真实收费模型，真实 A/B 的表达质量和延迟仍需配置路由后验收。
+
+0.1.1 修复 GitHub URL 安装不识别组合包的问题；根清单与 tarball 共用同一布局，预构建文件随 Git 提交。新增分发回归测试，类型检查与 20 项测试通过。修复与 URL 安装验收见 [分发修复记录](evidence/distribution-fix.md)。
 
 校验保护代码、路径、链接、数字、选项和部分状态用语，不能证明任意自然语言完全等义，因此保留原文入口。当前支持主聊天 Web，不改写子 agent、标题、压缩摘要、CLI/SDK 或导出。第三方替换聊天 renderer 或带嵌套子槽的自定义思考/图片 renderer 需单独适配。
 

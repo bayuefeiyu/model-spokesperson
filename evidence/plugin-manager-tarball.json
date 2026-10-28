@@ -1,0 +1,11 @@
+{
+  "version": "0.1.1",
+  "source": "tarball",
+  "bundleRecognized": true,
+  "components": [
+    "model-spokesperson-host",
+    "model-spokesperson-ui"
+  ],
+  "bundleDisabledAndReenabled": true,
+  "pageErrors": []
+}
