@@ -1,0 +1,72 @@
+{
+  "validationDate": "2026-10-28",
+  "version": "0.2.2",
+  "runtime": "0.2.1-rc.3",
+  "checks": {
+    "typecheck": "pass",
+    "tests": {
+      "pass": 46,
+      "fail": 0
+    },
+    "build": "pass",
+    "browser": {
+      "version": "0.2.2",
+      "checks": [
+        "review failure exposes Retry B button; only failed/remaining reviews run (2 B calls)",
+        "draft failure retries draft and configured reviews without repeating A (3 B calls)",
+        "ready results replace original row; reload never repeats successful B",
+        "saved one failed review for restart/reinstallation verification"
+      ],
+      "pageErrors": [],
+      "realApiCalls": 0
+    }
+  },
+  "artifact": {
+    "path": "dist/dsh-plugins-model-spokesperson-0.2.2.tgz",
+    "bytes": 71692,
+    "sha256": "83c48b24e28b5a32ab76ba0a3f178f3572042e0b6077427d86cde9073ccbc010",
+    "installedCodeMatches": true
+  },
+  "sourceChecksums": {
+    "src/client.ts": "e6e3ca82599212e8e2206a148ebe91df29a8e4886c57f2c0f5ec2232b172d564",
+    "src/config.ts": "97ba8b7f1bcc08bd26d436230d83dc555c3ffaf1785391bf9007bc31b199df6b",
+    "src/contract.ts": "11be54ac9e7468c959d404a019da64a784519e9fc27b5aded8fd4ce1bcb70676",
+    "src/host-types.ts": "27c89fd26392bebd1e5b50b918d267e6783f313f05bb7a5336017b25a647855f",
+    "src/host.ts": "0bdb22fcaba6116d30d1f9fe3a29613487f68c1bcf34eb3781ae26bc118ef4a7",
+    "src/policy.ts": "eee21ea8edd84662fcd6a6cd703b8ba2a47e1c9342ba50de80fa647861e67b56",
+    "src/presentation.tsx": "2d161ff4853cd0b831c2e7f0efccd6a8b67ddd9125e4927db7e45e4f662e3323",
+    "src/projection.ts": "03f48163a1707b27d5178bb431533388165b1f2768013ae7126582344928d981",
+    "src/prompt.ts": "310eba8af446d357a8ca15a47a625cb7faf61a33c1f32e057d5e581b2b8a8082",
+    "src/queue.ts": "94a2120f430e1caf3a2d695fdc13ba596b72606e9b10a10f656b1938a111206e",
+    "src/report-progress.ts": "eab8f58fc3bfd03876f5a0fe3d2dab74144503fc48879fb0fb939f6a6beee250",
+    "src/retry-remote.ts": "eb0141ad581a59ca4128663a2e50578bcbf14b1dbbfbc13459f25c18ff135068",
+    "src/retry-service.ts": "cebc4706e5bca02371ade96825cf6b59e819b2b4b2090c8d7857e8f924c3047d",
+    "src/settings-client.ts": "abbe71eabaac24f6ce6f312b7c05193556c8eeb7a4550ccae72f5f2ed87b7505",
+    "src/settings-view.tsx": "98db881d427a9f1dae8fb16a4c064f6b73e26251d7c01cdb46d5f22eea2b9a13",
+    "src/work-context.ts": "30fc3c96cf96179eff9ff454fb6d1a6ac23b3e75899995d8cf2e114a5c062a89",
+    "tests/client.test.tsx": "4546bdcf5b735b62f357093020a217bcc76b5368fdb47c513b4d80a5340d3088",
+    "tests/distribution.test.ts": "dfdc0e1c327e9d36b52244cfc051593ffaa1d2fb2a3203655135968cecca2902",
+    "tests/host.test.ts": "63d29fed00a50619f0b9b3e42950f061661fad46d6c396f5f6b0ae6b690aa3bb",
+    "tests/policy.test.ts": "728c833eb51b5279f3fb595ac8f0980c975967554e1385586d550495dae947b7",
+    "tests/presentation.test.tsx": "c333db3eb4a6ce563c524676ed75277a822c33d76071dddd35ef4953d12fb03c",
+    "tests/settings.test.tsx": "74a561639fc68ecd5d2709814f401cc43e374b60c18f21c4df017857427057a8",
+    "tests/work-context.test.ts": "00bed1faa4347d6445b63a55883c8d267f8feacb6c6b5f9a6e18bc3e712a650d",
+    "scripts/browser-e2e.mjs": "8cfddadc9cb6d24859de101e9cbfa5b8ef8a1a99fd1d9ef2d7a9b31eee312423",
+    "scripts/browser-fallback.mjs": "89f00d640ebe53cf0f2e9da2ecaece29cbc445c7693664a1a48eb04a1bc91251",
+    "scripts/browser-history.mjs": "0ca764b4bb84dd1b9b922e298a4de3af72cfa0fa7ea856474ba5f83c14b2daba",
+    "scripts/browser-manager.mjs": "ed01b6c7963df13c68744eb3312194dd6d23e1c335ff3218c8db321f64b1148c",
+    "scripts/browser-prompts.mjs": "bbca1b7ea5de62887e0793aeacf53d2e69bddf796307f9ee1e47b3d8e2a01417",
+    "scripts/browser-retry.mjs": "0f5ea84edb4eb5db785661b207fc9f0d5378293f3ff7263dd64a7f68cfdf1867",
+    "scripts/browser-settings.mjs": "fc4c436a6433c7d4d0c6b2e687600d4b5321039c40617228cb0a79c95625fb63",
+    "scripts/browser-smoke.mjs": "f455777c4f9b838ddd0d4f198a8d96ae6addef9533215e673acedd331be7c492",
+    "scripts/build.mjs": "58cc849d375734b1240818e8190f931631f0637bc9e4d9d8e9ff95f238cf6df0",
+    "scripts/dev-cli.mjs": "8f6a237ac6e3427704101964db5979df71a4370ea6c41c918acc46228be2495d",
+    "scripts/inspect-runtime.py": "0465e725721547a756e69f1c604e40c2e32aa174c5affc69f1cbb661abf3ae41",
+    "scripts/pack.mjs": "85644f3c427ffcdaf8de5d19e1e0328a35b6f6a07e794fd1470be263d5957dfd",
+    "scripts/prepare-demo.mjs": "7d89060aa4cc2571fe0822f8e51849bc26af9e9ba3bcdbe67be8ac790976912c",
+    "scripts/prepare-runtime.py": "94fdc8a8cb153f2214fb773900e2a6a0b6d70b3baab227a229fe0f292ed703c8"
+  },
+  "realModelApiCalls": 0,
+  "dailyInstallationModified": false,
+  "dailyProfileModified": false
+}

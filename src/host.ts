@@ -4,14 +4,17 @@ import { BlockAssembler, createUserMessage, type GenerateOptions, type TokenUsag
 import { appendPluginRecord, type Session, type SessionEvent } from '@deepseek-ai/dsh-session';
 import type {} from '@deepseek-ai/dsh-session-projection';
 import type {} from '@deepseek-ai/dsh-settings';
+import type {} from '@deepseek-ai/dsh-api-session-controller';
 import { createHash } from 'node:crypto';
-import { RECORD, PROJECTION, ProjectionSchema, StateSchema, stepKey, matchRule, type Rewrite, type Settings } from './contract.ts';
+import { RECORD, PROJECTION, ProjectionSchema, StateSchema, WorkContextSchema, stepKey, matchRule, type RetryRequest, type RetryResponse, type Rewrite, type Settings } from './contract.ts';
 import { readSettings, type RuntimeSettings } from './config.ts';
 export { Config } from './config.ts';
 import { foldRewrites } from './projection.ts';
 import { skipText, validateRewrite, validateReport } from './policy.ts';
 import { RewriteQueue } from './queue.ts';
 import { captureWorkContext, type WorkContext } from './work-context.ts';
+import { completedPrefix, hasCompletedFinal, stageRequest } from './report-progress.ts';
+import { RetryService } from './retry-service.ts';
 
 export const inject = ['agents', 'sessions', 'llm', 'sessionProjections'];
 
@@ -52,8 +55,9 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
     key: PROJECTION, stateSchema: StateSchema, stateVersion: 1,
     init: () => ({ rows: {}, latestUser: '', synced: [] }), apply: foldRewrites,
     // Full requests/work records stay in the durable log, not the chat projection wire.
-    wire: { viewSchema: ProjectionSchema, view: state => Object.fromEntries(Object.entries(state.rows).map(([key, { stages: _stages, request: _request, ...row }]) => [key, row])) },
+    wire: { viewSchema: ProjectionSchema, view: state => Object.fromEntries(Object.entries(state.rows).map(([key, { context: _context, stages: _stages, request: _request, ...row }]) => [key, row])) },
   });
+  new RetryService(ctx, retry);
 
   const isMain = (agent: Agent) => agent.session.header.origin !== 'subagent' && ctx.agents.roots().some(root => root.id === agent.id);
   function save(session: Session, row: Rewrite) {
@@ -71,30 +75,31 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
       if (attempt.row.status === 'collecting' || attempt.row.status === 'rewriting') {
         attempt.controller.abort(new Error(reason));
         attempt.context = undefined;
-        update(agent, attempt, { status: 'cancelled', reason, finishedAt: Date.now() });
+        update(agent, attempt, { status: 'cancelled', reason, rewrittenText: undefined, finishedAt: Date.now() });
       }
     }
   }
-  async function rewrite(agent: Agent, attempt: Attempt) {
+  async function rewrite(agent: Agent, attempt: Attempt, maintenanceSignal?: AbortSignal) {
     const settings = attempt.policy;
     const { originalText = '' } = attempt.row;
     const timeout = new AbortController();
     const timer = settings.timeoutMs > 0 ? setTimeout(() => timeout.abort(new Error('timeout')), settings.timeoutMs) : undefined;
-    const signal = AbortSignal.any([attempt.controller.signal, lifetime.signal, timeout.signal]);
+    const signal = AbortSignal.any([attempt.controller.signal, lifetime.signal, timeout.signal, ...(maintenanceSignal ? [maintenanceSignal] : [])]);
     try {
       await queue.run(signal, async () => {
         const context = attempt.context;
         if (!context) throw new Error('writer-context-missing');
-        let ownDraft: string | undefined;
-        for (let round = 0; round <= settings.reviewRounds; round++) {
+        const activeStages = [...(attempt.row.activeStages ?? [])];
+        let ownDraft = attempt.row.stages?.[activeStages.at(-1)!]?.output;
+        for (let round = activeStages.length; round <= settings.reviewRounds; round++) {
           signal.throwIfAborted();
           const kind = round === 0 ? 'draft' : 'review';
-          const system = (round === 0 ? settings.draftPrompt : settings.reviewPrompt) + '\n表达偏好：' + settings.style;
           // A's final report is introduced only after B has produced its independent draft.
-          const input = JSON.stringify(round === 0 ? context : { ...context, ownDraft, sourceReport: originalText, reviewRound: round });
+          const { system, input } = stageRequest(settings, context, originalText, round, ownDraft);
           if (settings.maxInputChars > 0 && system.length + input.length > settings.maxInputChars) throw new Error('input-limit');
-          const stages: NonNullable<Rewrite['stages']> = [...(attempt.row.stages ?? []), { kind, round, system, input, startedAt: Date.now() }];
-          if (!update(agent, attempt, { status: 'rewriting', phase: round === 0 ? 'drafting' : 'reviewing', reviewRound: round, stages })) return;
+          const stages: NonNullable<Rewrite['stages']> = [...(attempt.row.stages ?? []), { kind, round, system, input, writer: attempt.row.writer, startedAt: Date.now() }];
+          activeStages.push(stages.length - 1);
+          if (!update(agent, attempt, { status: 'rewriting', phase: round === 0 ? 'drafting' : 'reviewing', reviewRound: round, stages, activeStages: [...activeStages] })) return;
           await ctx.sessions.flush(agent.session);
           signal.throwIfAborted();
           const options: GenerateOptions = {
@@ -160,6 +165,55 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
     pending.add(contained);
     void contained.finally(() => { pending.delete(contained); if (!pending.size) jobs.delete(agent); });
   }
+  async function retry(request: RetryRequest): Promise<RetryResponse> {
+    let agent = ctx.agents.roots().find(root => root.session.id === request.sessionId);
+    if (!agent) {
+      const controller = ctx.get('sessionController');
+      if (!controller) return { accepted: false, message: '会话暂不可用，请重新打开会话后重试。' };
+      const result = await controller.resolveAgent(request.sessionId as Session['id']);
+      if ('error' in result) return { accepted: false, message: '会话暂不可用，请重新打开会话后重试。' };
+      agent = result.agent;
+    }
+    if (!isMain(agent) || agent.status !== 'idle') return { accepted: false, message: '请等待 A 完成当前工作后再重试。' };
+    const row = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows[stepKey(request.turn, request.step)];
+    if (!row || row.policyVersion !== 2 || row.attemptId !== request.attemptId || row.originalMessageId !== request.originalMessageId || (row.retryCount ?? 0) !== request.retryCount || !['fallback', 'cancelled'].includes(row.status)) return { accepted: false, message: '这条回复的状态已改变，请刷新后再试。' };
+    const messages = agent.session.deriveMessages();
+    const position = messages.findIndex(message => message.id === row.originalMessageId);
+    const original = messages[position];
+    const originalText = original?.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('');
+    if (!original || original.role !== 'assistant' || originalText !== row.originalText || (row.sourceHash && row.sourceHash !== hash(originalText!))) return { accepted: false, message: '原回复已删除或改变，无法重试。' };
+    const settings = readSettings(raw);
+    const rule = matchRule(settings, row.source);
+    if (!rule) return { accepted: false, message: '请先在插件设置中启用 B，并配置匹配的 A 模型。' };
+    let context = row.context;
+    if (!context && row.stages?.[0]) {
+      try { const parsed = WorkContextSchema.safeParse(JSON.parse(row.stages[0].input)); if (parsed.success) context = parsed.data; } catch {}
+    }
+    // Older failures before the first B call did not save a request. Use only
+    // the surviving history prefix before A's report, never later conversation.
+    context ??= captureWorkContext(messages.slice(0, position), ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {});
+    if (!context.workContext.length) return { accepted: false, message: '这条历史回复缺少可恢复的工作材料，无法重试。' };
+    const next: Rewrite = { ...row, sessionId: agent.session.id, writer: rule.writer, context,
+      stages: row.stages?.map(stage => ({ ...stage, writer: stage.writer ?? row.writer })),
+      reviewRounds: settings.reviewRounds, retryCount: (row.retryCount ?? 0) + 1, status: 'rewriting',
+      rewrittenText: undefined, reason: undefined, finishedAt: undefined };
+    next.activeStages = completedPrefix(next, settings, context);
+    next.reviewRound = Math.min(next.activeStages.length, settings.reviewRounds);
+    next.phase = next.activeStages.length ? 'reviewing' : 'drafting';
+    const attempt: Attempt = { row: next, policy: settings, context, terminal: true, done: true, controller: new AbortController() };
+    const owner = agent;
+    try {
+      const task = owner.runMaintenance(async signal => {
+        const map = states.get(owner) ?? new Map<string, Attempt>(); states.set(owner, map);
+        map.set(stepKey(row.turn, row.step), attempt);
+        queue.setCapacity(settings.maxConcurrentRewrites);
+        save(owner.session, next);
+        await rewrite(owner, attempt, signal);
+      });
+      track(owner, task);
+    } catch { return { accepted: false, message: '会话正在处理其他操作，请稍后重试。' }; }
+    return { accepted: true };
+  }
   function onFrame(agent: Agent, frame: AssistantStreamFrame) {
     if (!isMain(agent)) return;
     const map = states.get(agent) ?? new Map<string, Attempt>();
@@ -177,7 +231,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
       const attempt: Attempt = {
         row: { schemaVersion: 1, policyVersion: 2, promptVersion: 2, sessionId: agent.session.id,
           turn: frame.turn, step: frame.step, attemptId: frame.attemptId,
-          source: rule.source, writer: rule.writer, status: 'collecting', reviewRounds: settings.reviewRounds, startedAt: Date.now() },
+          source: rule.source, writer: rule.writer, status: 'collecting', retryCount: 0, reviewRounds: settings.reviewRounds, startedAt: Date.now() },
         context: captureWorkContext(agent.session.deriveMessages(), ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {}),
         policy: settings, terminal: false, done: false, controller: new AbortController(),
       };
@@ -218,7 +272,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
       attempt.context = undefined;
       update(agent, attempt, { status: 'bypass', reason: 'source-route-changed' }); return;
     }
-    if (!update(agent, attempt, { status: 'rewriting', originalMessageId: message.id, sourceHash: hash(text), originalText: text })) return;
+    if (!update(agent, attempt, { status: 'rewriting', context: attempt.context, originalMessageId: message.id, sourceHash: hash(text), originalText: text })) return;
     track(agent, rewrite(agent, attempt));
   }
   ctx.on('agent/assistant-stream', ({ agent, frame }) => {
@@ -263,7 +317,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
       if (row.status !== 'collecting' && row.status !== 'rewriting') continue;
       const staged = row.policyVersion === 1
         ? row.originalText && row.rewrittenText && !validateRewrite(row.originalText, row.rewrittenText)
-        : row.rewrittenText && !validateReport(row.rewrittenText) && row.stages?.length === (row.reviewRounds ?? 1) + 1 && row.stages.every(stage => stage.output && stage.finishedAt !== undefined);
+        : hasCompletedFinal(row);
       save(agent.session, { ...row, status: staged ? 'ready' : 'fallback', rewrittenText: staged ? row.rewrittenText : undefined, reason: 'interrupted-rewrite', finishedAt: Date.now() });
     }
   }

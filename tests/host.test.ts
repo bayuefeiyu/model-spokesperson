@@ -6,7 +6,7 @@ import { mountAgentLoopTestDependencies, mountAgentLoopTestHarness, provideWorki
 import { LlmAdapter, createUserMessage, ToolCallId, isAgentLoopRequest, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm';
 import { SessionId, appendPluginRecord } from '@deepseek-ai/dsh-session';
 import * as Host from '../src/host.ts';
-import { PROJECTION, RECORD, type Settings, type Rewrite } from '../src/contract.ts';
+import { PROJECTION, RECORD, type RetryRequest, type Settings, type Rewrite } from '../src/contract.ts';
 
 async function* text(value: string): AsyncIterable<StreamChunk> {
   yield { type: 'text-delta', index: 0, text: value };
@@ -464,4 +464,191 @@ test('custom stage prompts replace complete defaults and are recorded exactly wi
     assert.equal(inputOf(calls[0]).sourceReport, undefined);
     assert.equal(inputOf(calls[1]).sourceReport, 'A 参考报告');
   } finally { await f.ctx.fiber.dispose(); }
+});
+
+const retryRequest = (row: Rewrite, sessionId = row.sessionId): RetryRequest => ({ sessionId, turn: row.turn, step: row.step, originalMessageId: row.originalMessageId!, attemptId: row.attemptId, retryCount: row.retryCount ?? 0 });
+
+test('manual retry after draft failure calls only B and preserves the exact original work snapshot', async () => {
+  let bCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'a') return text('A 本次成稿');
+    if (++bCalls === 1) return (async function* () { throw new Error('temporary endpoint failure'); })();
+    return text('B 最终稿');
+  });
+  try {
+    await f.prompt('原来的任务');
+    const failed = await f.waitRow(row => row.status === 'fallback');
+    assert.deepEqual(await f.ctx.modelSpokesperson.retry(retryRequest(failed)), { accepted: true });
+    const ready = await f.waitRow();
+    assert.equal(ready.retryCount, 1);
+    assert.equal(bCalls, 3);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 1);
+    const bs = f.adapter.calls.filter(call => call.model === 'b');
+    assert.deepEqual(inputOf(bs[0]), inputOf(bs[1]));
+    assert.ok(!JSON.stringify(inputOf(bs[1])).includes('A 本次成稿'));
+    assert.deepEqual(ready.activeStages, [1, 2]);
+    assert.equal(ready.stages?.length, 3);
+    assert.deepEqual(await f.ctx.modelSpokesperson.retry(retryRequest(failed)), { accepted: false, message: '这条回复的状态已改变，请刷新后再试。' });
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('review retries reuse successful draft, keep failed calls/usage and recover complete final history', async () => {
+  let reviewCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'a') return text('A 原文');
+    if (!inputOf(options).ownDraft) return text('B 已成功的初稿');
+    if (++reviewCalls <= 2) return (async function* (): AsyncIterable<StreamChunk> {
+      yield { type: 'usage', usage: { inputTokens: 3, outputTokens: 2 } };
+      yield { type: 'finish', reason: { kind: 'error', failure: { code: 'TEMPORARY', message: 'private endpoint' } } };
+    })();
+    return text('B 核对后的稿件');
+  });
+  try {
+    await f.prompt();
+    let row = await f.waitRow(row => row.status === 'fallback');
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(row))).accepted, true);
+    row = await f.waitRow(row => row.status === 'fallback' && row.retryCount === 1);
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(row))).accepted, true);
+    const ready = await f.waitRow();
+    assert.equal(ready.rewrittenText, 'B 核对后的稿件');
+    assert.equal(ready.retryCount, 2);
+    assert.deepEqual(ready.activeStages, [0, 3]);
+    assert.equal(ready.stages?.length, 4);
+    assert.deepEqual(ready.usage, { inputTokens: 26, outputTokens: 14 });
+    assert.equal(f.adapter.calls.filter(call => call.model === 'b' && !inputOf(call).ownDraft).length, 1);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 1);
+    const count = f.adapter.calls.length;
+    appendPluginRecord(f.agent.session, RECORD, { ...ready, status: 'rewriting' });
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }] }); await f.fiber.await();
+    assert.equal(f.rows()[0].status, 'ready');
+    assert.equal(f.adapter.calls.length, count);
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('retry uses current prompts/budgets and invalidates successful prefix when draft requirements change', async () => {
+  for (const change of ['review', 'draft', 'writer']) {
+    let fail = true;
+    const f = await fixture(options => {
+      if (options.model === 'a') return text('A 原文');
+      if (inputOf(options).ownDraft && fail) return (async function* () { throw new Error('fail'); })();
+      return text('B 正文');
+    });
+    try {
+      await f.prompt();
+      const failed = await f.waitRow(row => row.status === 'fallback');
+      fail = false;
+      const writer = { provider: 'mock', model: change === 'writer' ? 'b-new' : 'b' };
+      f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer }], maxOutputTokens: 100000,
+        ...(change === 'review' ? { reviewPrompt: '新的核对要求' } : change === 'draft' ? { draftPrompt: '新的起草要求' } : {}) });
+      await f.fiber.await();
+      const before = f.adapter.calls.length;
+      assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(failed))).accepted, true);
+      const ready = await f.waitRow();
+      const newCalls = f.adapter.calls.slice(before);
+      assert.equal(newCalls.length, change === 'review' ? 1 : 2);
+      assert.ok(newCalls.every(call => call.maxTokens === 100000 && call.model === writer.model));
+      if (change === 'review') assert.ok(newCalls[0].system?.startsWith('新的核对要求'));
+      else assert.equal(inputOf(newCalls[0]).ownDraft, undefined);
+      assert.equal(ready.retryCount, 1);
+      assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 1);
+    } finally { await f.ctx.fiber.dispose(); }
+  }
+});
+
+test('retry admission rejects duplicate clicks and new input cancels only the B retry maintenance task', async () => {
+  let fail = true, retryStarted!: () => void;
+  const started = new Promise<void>(resolve => { retryStarted = resolve; });
+  const f = await fixture(options => {
+    if (options.model === 'a') return text('A 原文');
+    if (fail) return (async function* () { throw new Error('fail'); })();
+    if (inputOf(options).userQuestion === '旧问题') return (async function* () { retryStarted(); await delay(80); yield* text('迟到的 B'); })();
+    return text('新问题 B');
+  });
+  try {
+    await f.prompt('旧问题');
+    const failed = await f.waitRow(row => row.status === 'fallback');
+    fail = false;
+    const req = retryRequest(failed);
+    assert.equal((await f.ctx.modelSpokesperson.retry(req)).accepted, true);
+    await started;
+    assert.equal((await f.ctx.modelSpokesperson.retry(req)).accepted, false);
+    await f.prompt('新问题');
+    const cancelled = f.rows().find(row => row.turn === 1)!;
+    assert.equal(cancelled.status, 'cancelled');
+    await f.waitRow(row => row.turn === 2 && row.status === 'ready');
+    await delay(100);
+    assert.equal(f.rows().find(row => row.turn === 1)?.status, 'cancelled');
+    assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 2);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'b' && inputOf(call).userQuestion === '旧问题').length, 2);
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('legacy pre-call failures reconstruct only history before their original report', async () => {
+  const f = await fixture(options => text(options.model === 'a' ? 'A 原文' : 'B 正文'), { maxInputChars: 1 });
+  try {
+    await f.prompt('早期用户要求');
+    const failed = await f.waitRow(row => row.status === 'fallback');
+    const legacy = { ...failed }; delete legacy.context; delete legacy.activeStages;
+    appendPluginRecord(f.agent.session, RECORD, legacy);
+    await f.prompt('后来的新要求');
+    await f.waitRow(row => row.turn === 2 && row.status === 'fallback');
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }] }); await f.fiber.await();
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(legacy))).accepted, true);
+    await f.waitRow(row => row.turn === 1 && row.status === 'ready');
+    const firstB = f.adapter.calls.find(call => call.model === 'b')!;
+    assert.equal(inputOf(firstB).userQuestion, '早期用户要求');
+    assert.ok(!JSON.stringify(inputOf(firstB)).includes('后来的新要求'));
+    assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 2);
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('a pre-0.2.2 review failure resumes from its stored first request after Host reload', async () => {
+  let fail = true;
+  const f = await fixture(options => {
+    if (options.model === 'a') return text('A 原文');
+    if (inputOf(options).ownDraft && fail) return (async function* () { throw new Error('temporary'); })();
+    return text('B 正文');
+  });
+  try {
+    await f.prompt('老版本的任务');
+    const failed = await f.waitRow(row => row.status === 'fallback');
+    const legacy = { ...failed, stages: failed.stages!.map(stage => { const copy = { ...stage }; delete copy.writer; return copy; }) };
+    delete legacy.context; delete legacy.activeStages; delete legacy.retryCount;
+    appendPluginRecord(f.agent.session, RECORD, legacy);
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }] }); await f.fiber.await();
+    fail = false;
+    const before = f.adapter.calls.length;
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(legacy))).accepted, true);
+    await f.waitRow();
+    const calls = f.adapter.calls.slice(before);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].model, 'b');
+    assert.equal(inputOf(calls[0]).ownDraft, 'B 正文');
+    assert.equal(inputOf(calls[0]).userQuestion, '老版本的任务');
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('busy A and disabled plugin reject retries before making any B request', async () => {
+  let notify!: () => void, release!: () => void;
+  const started = new Promise<void>(resolve => { notify = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let sourceCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'b') return (async function* () { throw new Error('fail'); })();
+    if (++sourceCalls === 1) return text('A 原文');
+    return (async function* () { notify(); await gate; yield* text('A 后续工作'); })();
+  });
+  try {
+    await f.prompt();
+    const failed = await f.waitRow(row => row.status === 'fallback');
+    const pending = f.prompt('A 新任务'); await started;
+    const before = f.adapter.calls.filter(call => call.model === 'b').length;
+    const busy = await f.ctx.modelSpokesperson.retry(retryRequest(failed));
+    assert.equal(busy.accepted, false);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'b').length, before);
+    f.agent.cancel({ kind: 'user' }); release(); await pending;
+    f.fiber.update({ enabled: false, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }] }); await f.fiber.await();
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(failed))).accepted, false);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'b').length, before);
+  } finally { release(); await f.ctx.fiber.dispose(); }
 });

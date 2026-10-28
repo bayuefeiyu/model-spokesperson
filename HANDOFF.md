@@ -1,6 +1,10 @@
 # 开发交接
 
-当前版本 0.2.1，针对 DSH 0.2.1-rc.3。安装包 dist/dsh-plugins-model-spokesperson-0.2.1.tgz；使用步骤见 README。独立报告流程见 evidence/report-validation.md，提示词设置见 evidence/prompt-validation.md。前端插件详情页可配置 A/B、开关、文风、完整的起草/核对提示词、核对轮数和用户预算。旧版本验收文档保留作历史证据。
+当前版本 0.2.2，针对 DSH 0.2.1-rc.3。安装包 dist/dsh-plugins-model-spokesperson-0.2.2.tgz；使用步骤见 README。独立报告流程见 evidence/report-validation.md，提示词设置见 evidence/prompt-validation.md，手动重试见 evidence/retry-validation.md。前端插件详情页可配置 A/B、开关、文风、完整的起草/核对提示词、核对轮数和用户预算。旧版本验收文档保留作历史证据。
+
+0.2.2 的 retry-service.ts/retry-remote.ts 定义原生 modelSpokesperson/retry 入口，Host 和 Client 共用严格协议描述符，服务使用会话资源边界。客户端只发送当前查看的 sessionId 和失败记录身份，不传入工作材料。Host 使用原生 sessionController.resolveAgent 恢复冷会话、runMaintenance 独占空闲操作，拒绝 A 正忙、陈旧消息、重复计数或未启用路由。不调用 A 或工具；新输入取消重试。
+
+report-progress.ts 根据模型、提示词和输入的精确一致性复用连续成功阶段；每次失败调用保留在 stages 中累计 usage，activeStages 记录本次采用的阶段索引。恢复最终稿时不能再按 stages 总长度等同逻辑步骤数。新记录单独保存 context，旧记录优先使用第一次 B 请求；无保存材料时仅截取 A 原报告之前仍有效的历史。wire 不包含 context/stages。
 
 0.2.1 的 draftPrompt/reviewPrompt 是完整阶段提示词，默认来自 src/prompt.ts，经 Config 的 volatile 字段和 SettingsSchema 提供。Host 每次 attempt 读取快照并按阶段选择，末尾只附加用户 style；不在自定义文本前后偷偷补上默认 COMMON。原生界面支持逐项恢复默认且只在保存后落盘，空白验证不会 trim 用户已输入的有效文本。每步请求记录实际使用文本，保持可回放。
 

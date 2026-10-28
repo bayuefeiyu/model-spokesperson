@@ -1,16 +1,11 @@
 import type { ContentBlock, Message } from '@deepseek-ai/dsh-llm';
-import type { RewriteProjection } from './contract.ts';
+import type { z } from 'zod';
+import type { RewriteProjection, WorkContextSchema } from './contract.ts';
 
-export interface WorkMessage {
-  role: 'user' | 'assistant' | 'tool';
-  source: string;
-  content: unknown[];
-  callId?: string;
-  isError?: boolean;
-}
-export interface WorkContext { userQuestion: string; workContext: WorkMessage[] }
+export type WorkContext = z.infer<typeof WorkContextSchema>;
+export type WorkMessage = WorkContext['workContext'][number];
 
-function material(block: ContentBlock): unknown[] {
+function material(block: ContentBlock): WorkMessage['content'] {
   switch (block.type) {
     case 'text': return [{ type: 'text', text: block.text }];
     case 'tool-call': return [{ type: 'tool-call', id: block.id, name: block.name, arguments: block.arguments }];

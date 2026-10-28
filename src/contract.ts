@@ -30,10 +30,20 @@ export const SettingsSchema = z.object({
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
+export const WorkContextSchema = z.object({
+  userQuestion: z.string(),
+  workContext: z.array(z.object({ role: z.enum(['user', 'assistant', 'tool']), source: z.string(), content: z.array(z.json()), callId: z.string().optional(), isError: z.boolean().optional() })),
+});
+export const RetryRequestSchema = z.strictObject({ sessionId: z.string().min(1), turn: z.number().int().min(0), step: z.number().int().min(0), originalMessageId: z.string().min(1), attemptId: z.string().min(1), retryCount: z.number().int().min(0) });
+export type RetryRequest = z.infer<typeof RetryRequestSchema>;
+export const RetryResponseSchema = z.union([z.object({ accepted: z.literal(true) }), z.object({ accepted: z.literal(false), message: z.string() })]);
+export type RetryResponse = z.infer<typeof RetryResponseSchema>;
+
 export const ReportStageSchema = z.object({
   kind: z.enum(['draft', 'review']), round: z.number().int().min(0),
   system: z.string(), input: z.string(), startedAt: z.number(),
   output: z.string().optional(), usage: z.unknown().optional(), finishedAt: z.number().optional(),
+  writer: RouteSchema.optional(),
 });
 export type ReportStage = z.infer<typeof ReportStageSchema>;
 export const RewriteSchema = z.object({
@@ -49,6 +59,8 @@ export const RewriteSchema = z.object({
   phase: z.enum(['drafting', 'reviewing']).optional(),
   reviewRound: z.number().int().min(0).optional(), reviewRounds: z.number().int().min(0).optional(),
   stages: z.array(ReportStageSchema).optional(),
+  context: WorkContextSchema.optional(), retryCount: z.number().int().min(0).optional(),
+  activeStages: z.array(z.number().int().min(0)).optional(),
 });
 export type Rewrite = z.infer<typeof RewriteSchema>;
 export const ProjectionSchema = z.record(z.string(), RewriteSchema);

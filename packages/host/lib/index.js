@@ -1,3 +1,51 @@
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __knownSymbol = (name, symbol) => (symbol = Symbol[name]) ? symbol : Symbol.for("Symbol." + name);
+var __typeError = (msg) => {
+  throw TypeError(msg);
+};
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __decoratorStart = (base) => [, , , __create(base?.[__knownSymbol("metadata")] ?? null)];
+var __decoratorStrings = ["class", "method", "getter", "setter", "accessor", "field", "value", "get", "set"];
+var __expectFn = (fn) => fn !== void 0 && typeof fn !== "function" ? __typeError("Function expected") : fn;
+var __decoratorContext = (kind, name, done, metadata, fns) => ({ kind: __decoratorStrings[kind], name, metadata, addInitializer: (fn) => done._ ? __typeError("Already initialized") : fns.push(__expectFn(fn || null)) });
+var __decoratorMetadata = (array, target) => __defNormalProp(target, __knownSymbol("metadata"), array[3]);
+var __runInitializers = (array, flags, self, value) => {
+  for (var i = 0, fns = array[flags >> 1], n = fns && fns.length; i < n; i++) flags & 1 ? fns[i].call(self) : value = fns[i].call(self, value);
+  return value;
+};
+var __decorateElement = (array, flags, name, decorators, target, extra) => {
+  var fn, it, done, ctx, access, k = flags & 7, s = !!(flags & 8), p = !!(flags & 16);
+  var j = k > 3 ? array.length + 1 : k ? s ? 1 : 2 : 0, key = __decoratorStrings[k + 5];
+  var initializers = k > 3 && (array[j - 1] = []), extraInitializers = array[j] || (array[j] = []);
+  var desc = k && (!p && !s && (target = target.prototype), k < 5 && (k > 3 || !p) && __getOwnPropDesc(k < 4 ? target : { get [name]() {
+    return __privateGet(this, extra);
+  }, set [name](x) {
+    return __privateSet(this, extra, x);
+  } }, name));
+  k ? p && k < 4 && __name(extra, (k > 2 ? "set " : k > 1 ? "get " : "") + name) : __name(target, name);
+  for (var i = decorators.length - 1; i >= 0; i--) {
+    ctx = __decoratorContext(k, name, done = {}, array[3], extraInitializers);
+    if (k) {
+      ctx.static = s, ctx.private = p, access = ctx.access = { has: p ? (x) => __privateIn(target, x) : (x) => name in x };
+      if (k ^ 3) access.get = p ? (x) => (k ^ 1 ? __privateGet : __privateMethod)(x, target, k ^ 4 ? extra : desc.get) : (x) => x[name];
+      if (k > 2) access.set = p ? (x, y) => __privateSet(x, target, y, k ^ 4 ? extra : desc.set) : (x, y) => x[name] = y;
+    }
+    it = (0, decorators[i])(k ? k < 4 ? p ? extra : desc[key] : k > 4 ? void 0 : { get: desc.get, set: desc.set } : target, ctx), done._ = 1;
+    if (k ^ 4 || it === void 0) __expectFn(it) && (k > 4 ? initializers.unshift(it) : k ? p ? extra = it : desc[key] = it : target = it);
+    else if (typeof it !== "object" || it === null) __typeError("Object expected");
+    else __expectFn(fn = it.get) && (desc.get = fn), __expectFn(fn = it.set) && (desc.set = fn), __expectFn(fn = it.init) && initializers.unshift(fn);
+  }
+  return k || __decoratorMetadata(array, target), desc && __defProp(target, name, desc), p ? k ^ 4 ? extra : desc : target;
+};
+var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
+var __privateIn = (member, obj) => Object(obj) !== obj ? __typeError('Cannot use the "in" operator on this value') : member.has(obj);
+var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
+var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
+var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
+
 // src/host.ts
 import { BlockAssembler, createUserMessage } from "@deepseek-ai/dsh-llm";
 import { appendPluginRecord } from "@deepseek-ai/dsh-session";
@@ -47,6 +95,12 @@ var SettingsSchema = z.object({
   });
   if (config.enabled && config.rules.length === 0) ctx.addIssue({ code: "custom", path: ["rules"], message: "\u542F\u7528\u65F6\u81F3\u5C11\u914D\u7F6E\u4E00\u4E2A\u6765\u6E90\u6A21\u578B" });
 });
+var WorkContextSchema = z.object({
+  userQuestion: z.string(),
+  workContext: z.array(z.object({ role: z.enum(["user", "assistant", "tool"]), source: z.string(), content: z.array(z.json()), callId: z.string().optional(), isError: z.boolean().optional() }))
+});
+var RetryRequestSchema = z.strictObject({ sessionId: z.string().min(1), turn: z.number().int().min(0), step: z.number().int().min(0), originalMessageId: z.string().min(1), attemptId: z.string().min(1), retryCount: z.number().int().min(0) });
+var RetryResponseSchema = z.union([z.object({ accepted: z.literal(true) }), z.object({ accepted: z.literal(false), message: z.string() })]);
 var ReportStageSchema = z.object({
   kind: z.enum(["draft", "review"]),
   round: z.number().int().min(0),
@@ -55,7 +109,8 @@ var ReportStageSchema = z.object({
   startedAt: z.number(),
   output: z.string().optional(),
   usage: z.unknown().optional(),
-  finishedAt: z.number().optional()
+  finishedAt: z.number().optional(),
+  writer: RouteSchema.optional()
 });
 var RewriteSchema = z.object({
   schemaVersion: z.literal(1),
@@ -80,7 +135,10 @@ var RewriteSchema = z.object({
   phase: z.enum(["drafting", "reviewing"]).optional(),
   reviewRound: z.number().int().min(0).optional(),
   reviewRounds: z.number().int().min(0).optional(),
-  stages: z.array(ReportStageSchema).optional()
+  stages: z.array(ReportStageSchema).optional(),
+  context: WorkContextSchema.optional(),
+  retryCount: z.number().int().min(0).optional(),
+  activeStages: z.array(z.number().int().min(0)).optional()
 });
 var ProjectionSchema = z.record(z.string(), RewriteSchema);
 var StateSchema = z.object({ rows: ProjectionSchema, latestUser: z.string(), synced: z.array(z.string()) });
@@ -263,6 +321,72 @@ function captureWorkContext(messages, rows) {
   return { userQuestion, workContext };
 }
 
+// src/report-progress.ts
+function stageRequest(settings, context, originalText, round, ownDraft) {
+  return {
+    system: (round === 0 ? settings.draftPrompt : settings.reviewPrompt) + "\n\u8868\u8FBE\u504F\u597D\uFF1A" + settings.style,
+    input: JSON.stringify(round === 0 ? context : { ...context, ownDraft, sourceReport: originalText, reviewRound: round })
+  };
+}
+function completedPrefix(row, settings, context) {
+  const stages = row.stages ?? [];
+  const indices = [];
+  let ownDraft;
+  for (let round = 0; round <= settings.reviewRounds; round++) {
+    const request2 = stageRequest(settings, context, row.originalText, round, ownDraft);
+    const index = stages.findLastIndex((stage) => stage.round === round && stage.kind === (round === 0 ? "draft" : "review") && stage.finishedAt !== void 0 && stage.output && !validateReport(stage.output) && routeEquals(stage.writer ?? row.writer, row.writer) && stage.system === request2.system && stage.input === request2.input);
+    if (index < 0) break;
+    indices.push(index);
+    ownDraft = stages[index].output;
+  }
+  return indices;
+}
+function hasCompletedFinal(row) {
+  if (!row.rewrittenText || validateReport(row.rewrittenText)) return false;
+  const stages = row.stages ?? [];
+  const indices = row.activeStages ?? stages.map((_stage, index) => index);
+  return indices.length === (row.reviewRounds ?? 1) + 1 && indices.every((index, round) => {
+    const stage = stages[index];
+    return stage?.round === round && stage.kind === (round === 0 ? "draft" : "review") && stage.finishedAt !== void 0 && !!stage.output && !validateReport(stage.output);
+  }) && stages[indices.at(-1)]?.output === row.rewrittenText;
+}
+
+// src/retry-service.ts
+import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
+import { SessionId } from "@deepseek-ai/dsh-session";
+
+// src/retry-remote.ts
+import { z as z2 } from "zod";
+import { createTypertRemoteInfo } from "@deepseek-ai/dsh-typert-protocol/remote-info";
+var request = { mode: "strict", typeSymbol: "@dsh-plugins/model-spokesperson#RetryRequest", create: () => RetryRequestSchema };
+var RETRY_REMOTE = createTypertRemoteInfo({ package: "@dsh-plugins/model-spokesperson-host", methods: {
+  "modelSpokesperson/retry": {
+    service: "modelSpokesperson",
+    invocation: { kind: "direct" },
+    parameters: [{ name: "request", source: "json", codec: request, strictCodec: request }],
+    result: { mode: "strict", typeSymbol: "@dsh-plugins/model-spokesperson#RetryResponse", create: () => RetryResponseSchema }
+  }
+} }, z2);
+
+// src/retry-service.ts
+var _retry_dec, _a, _init;
+var RetryService = class extends (_a = TypertRemoteService, _retry_dec = [Remote({ resources: { session: (request2) => SessionId(request2.sessionId) } })], _a) {
+  constructor(ctx, retryReport) {
+    super(ctx, "modelSpokesperson");
+    this.retryReport = retryReport;
+    __runInitializers(_init, 5, this);
+    ctx.inject(["typert"], (child) => {
+      child.effect(() => child.typert.register({ package: RETRY_REMOTE.package, face: "host", schemas: [], model: { services: [], events: [], objects: [] }, invocations: RETRY_REMOTE.descriptors }));
+    });
+  }
+  async retry(request2) {
+    return this.retryReport(RetryRequestSchema.parse(request2));
+  }
+};
+_init = __decoratorStart(_a);
+__decorateElement(_init, 1, "retry", _retry_dec, RetryService);
+__decoratorMetadata(_init, RetryService);
+
 // src/host.ts
 var inject = ["agents", "sessions", "llm", "sessionProjections"];
 function hash(text) {
@@ -303,8 +427,9 @@ function apply(ctx, raw = {}) {
     init: () => ({ rows: {}, latestUser: "", synced: [] }),
     apply: foldRewrites,
     // Full requests/work records stay in the durable log, not the chat projection wire.
-    wire: { viewSchema: ProjectionSchema, view: (state) => Object.fromEntries(Object.entries(state.rows).map(([key, { stages: _stages, request: _request, ...row }]) => [key, row])) }
+    wire: { viewSchema: ProjectionSchema, view: (state) => Object.fromEntries(Object.entries(state.rows).map(([key, { context: _context, stages: _stages, request: _request, ...row }]) => [key, row])) }
   });
+  new RetryService(ctx, retry);
   const isMain = (agent) => agent.session.header.origin !== "subagent" && ctx.agents.roots().some((root) => root.id === agent.id);
   function save(session, row) {
     appendPluginRecord(session, RECORD, JSON.parse(JSON.stringify(row)));
@@ -320,29 +445,30 @@ function apply(ctx, raw = {}) {
       if (attempt.row.status === "collecting" || attempt.row.status === "rewriting") {
         attempt.controller.abort(new Error(reason));
         attempt.context = void 0;
-        update(agent, attempt, { status: "cancelled", reason, finishedAt: Date.now() });
+        update(agent, attempt, { status: "cancelled", reason, rewrittenText: void 0, finishedAt: Date.now() });
       }
     }
   }
-  async function rewrite(agent, attempt) {
+  async function rewrite(agent, attempt, maintenanceSignal) {
     const settings = attempt.policy;
     const { originalText = "" } = attempt.row;
     const timeout = new AbortController();
     const timer = settings.timeoutMs > 0 ? setTimeout(() => timeout.abort(new Error("timeout")), settings.timeoutMs) : void 0;
-    const signal = AbortSignal.any([attempt.controller.signal, lifetime.signal, timeout.signal]);
+    const signal = AbortSignal.any([attempt.controller.signal, lifetime.signal, timeout.signal, ...maintenanceSignal ? [maintenanceSignal] : []]);
     try {
       await queue.run(signal, async () => {
         const context = attempt.context;
         if (!context) throw new Error("writer-context-missing");
-        let ownDraft;
-        for (let round = 0; round <= settings.reviewRounds; round++) {
+        const activeStages = [...attempt.row.activeStages ?? []];
+        let ownDraft = attempt.row.stages?.[activeStages.at(-1)]?.output;
+        for (let round = activeStages.length; round <= settings.reviewRounds; round++) {
           signal.throwIfAborted();
           const kind = round === 0 ? "draft" : "review";
-          const system = (round === 0 ? settings.draftPrompt : settings.reviewPrompt) + "\n\u8868\u8FBE\u504F\u597D\uFF1A" + settings.style;
-          const input = JSON.stringify(round === 0 ? context : { ...context, ownDraft, sourceReport: originalText, reviewRound: round });
+          const { system, input } = stageRequest(settings, context, originalText, round, ownDraft);
           if (settings.maxInputChars > 0 && system.length + input.length > settings.maxInputChars) throw new Error("input-limit");
-          const stages = [...attempt.row.stages ?? [], { kind, round, system, input, startedAt: Date.now() }];
-          if (!update(agent, attempt, { status: "rewriting", phase: round === 0 ? "drafting" : "reviewing", reviewRound: round, stages })) return;
+          const stages = [...attempt.row.stages ?? [], { kind, round, system, input, writer: attempt.row.writer, startedAt: Date.now() }];
+          activeStages.push(stages.length - 1);
+          if (!update(agent, attempt, { status: "rewriting", phase: round === 0 ? "drafting" : "reviewing", reviewRound: round, stages, activeStages: [...activeStages] })) return;
           await ctx.sessions.flush(agent.session);
           signal.throwIfAborted();
           const options = {
@@ -417,6 +543,69 @@ function apply(ctx, raw = {}) {
       if (!pending.size) jobs.delete(agent);
     });
   }
+  async function retry(request2) {
+    let agent = ctx.agents.roots().find((root) => root.session.id === request2.sessionId);
+    if (!agent) {
+      const controller = ctx.get("sessionController");
+      if (!controller) return { accepted: false, message: "\u4F1A\u8BDD\u6682\u4E0D\u53EF\u7528\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00\u4F1A\u8BDD\u540E\u91CD\u8BD5\u3002" };
+      const result = await controller.resolveAgent(request2.sessionId);
+      if ("error" in result) return { accepted: false, message: "\u4F1A\u8BDD\u6682\u4E0D\u53EF\u7528\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00\u4F1A\u8BDD\u540E\u91CD\u8BD5\u3002" };
+      agent = result.agent;
+    }
+    if (!isMain(agent) || agent.status !== "idle") return { accepted: false, message: "\u8BF7\u7B49\u5F85 A \u5B8C\u6210\u5F53\u524D\u5DE5\u4F5C\u540E\u518D\u91CD\u8BD5\u3002" };
+    const row = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows[stepKey(request2.turn, request2.step)];
+    if (!row || row.policyVersion !== 2 || row.attemptId !== request2.attemptId || row.originalMessageId !== request2.originalMessageId || (row.retryCount ?? 0) !== request2.retryCount || !["fallback", "cancelled"].includes(row.status)) return { accepted: false, message: "\u8FD9\u6761\u56DE\u590D\u7684\u72B6\u6001\u5DF2\u6539\u53D8\uFF0C\u8BF7\u5237\u65B0\u540E\u518D\u8BD5\u3002" };
+    const messages = agent.session.deriveMessages();
+    const position = messages.findIndex((message) => message.id === row.originalMessageId);
+    const original = messages[position];
+    const originalText = original?.content.flatMap((block) => block.type === "text" ? [block.text] : []).join("");
+    if (!original || original.role !== "assistant" || originalText !== row.originalText || row.sourceHash && row.sourceHash !== hash(originalText)) return { accepted: false, message: "\u539F\u56DE\u590D\u5DF2\u5220\u9664\u6216\u6539\u53D8\uFF0C\u65E0\u6CD5\u91CD\u8BD5\u3002" };
+    const settings = readSettings(raw);
+    const rule = matchRule(settings, row.source);
+    if (!rule) return { accepted: false, message: "\u8BF7\u5148\u5728\u63D2\u4EF6\u8BBE\u7F6E\u4E2D\u542F\u7528 B\uFF0C\u5E76\u914D\u7F6E\u5339\u914D\u7684 A \u6A21\u578B\u3002" };
+    let context = row.context;
+    if (!context && row.stages?.[0]) {
+      try {
+        const parsed = WorkContextSchema.safeParse(JSON.parse(row.stages[0].input));
+        if (parsed.success) context = parsed.data;
+      } catch {
+      }
+    }
+    context ??= captureWorkContext(messages.slice(0, position), ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {});
+    if (!context.workContext.length) return { accepted: false, message: "\u8FD9\u6761\u5386\u53F2\u56DE\u590D\u7F3A\u5C11\u53EF\u6062\u590D\u7684\u5DE5\u4F5C\u6750\u6599\uFF0C\u65E0\u6CD5\u91CD\u8BD5\u3002" };
+    const next = {
+      ...row,
+      sessionId: agent.session.id,
+      writer: rule.writer,
+      context,
+      stages: row.stages?.map((stage) => ({ ...stage, writer: stage.writer ?? row.writer })),
+      reviewRounds: settings.reviewRounds,
+      retryCount: (row.retryCount ?? 0) + 1,
+      status: "rewriting",
+      rewrittenText: void 0,
+      reason: void 0,
+      finishedAt: void 0
+    };
+    next.activeStages = completedPrefix(next, settings, context);
+    next.reviewRound = Math.min(next.activeStages.length, settings.reviewRounds);
+    next.phase = next.activeStages.length ? "reviewing" : "drafting";
+    const attempt = { row: next, policy: settings, context, terminal: true, done: true, controller: new AbortController() };
+    const owner = agent;
+    try {
+      const task = owner.runMaintenance(async (signal) => {
+        const map = states.get(owner) ?? /* @__PURE__ */ new Map();
+        states.set(owner, map);
+        map.set(stepKey(row.turn, row.step), attempt);
+        queue.setCapacity(settings.maxConcurrentRewrites);
+        save(owner.session, next);
+        await rewrite(owner, attempt, signal);
+      });
+      track(owner, task);
+    } catch {
+      return { accepted: false, message: "\u4F1A\u8BDD\u6B63\u5728\u5904\u7406\u5176\u4ED6\u64CD\u4F5C\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002" };
+    }
+    return { accepted: true };
+  }
   function onFrame(agent, frame) {
     if (!isMain(agent)) return;
     const map = states.get(agent) ?? /* @__PURE__ */ new Map();
@@ -443,6 +632,7 @@ function apply(ctx, raw = {}) {
           source: rule.source,
           writer: rule.writer,
           status: "collecting",
+          retryCount: 0,
           reviewRounds: settings.reviewRounds,
           startedAt: Date.now()
         },
@@ -496,7 +686,7 @@ function apply(ctx, raw = {}) {
       update(agent, attempt, { status: "bypass", reason: "source-route-changed" });
       return;
     }
-    if (!update(agent, attempt, { status: "rewriting", originalMessageId: message.id, sourceHash: hash(text), originalText: text })) return;
+    if (!update(agent, attempt, { status: "rewriting", context: attempt.context, originalMessageId: message.id, sourceHash: hash(text), originalText: text })) return;
     track(agent, rewrite(agent, attempt));
   }
   ctx.on("agent/assistant-stream", ({ agent, frame }) => {
@@ -541,7 +731,7 @@ ${JSON.stringify(row.rewrittenText)}` }]
     const rows = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {};
     for (const row of Object.values(rows)) {
       if (row.status !== "collecting" && row.status !== "rewriting") continue;
-      const staged = row.policyVersion === 1 ? row.originalText && row.rewrittenText && !validateRewrite(row.originalText, row.rewrittenText) : row.rewrittenText && !validateReport(row.rewrittenText) && row.stages?.length === (row.reviewRounds ?? 1) + 1 && row.stages.every((stage) => stage.output && stage.finishedAt !== void 0);
+      const staged = row.policyVersion === 1 ? row.originalText && row.rewrittenText && !validateRewrite(row.originalText, row.rewrittenText) : hasCompletedFinal(row);
       save(agent.session, { ...row, status: staged ? "ready" : "fallback", rewrittenText: staged ? row.rewrittenText : void 0, reason: "interrupted-rewrite", finishedAt: Date.now() });
     }
   }

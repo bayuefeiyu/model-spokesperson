@@ -9,7 +9,7 @@ const emptySettings = process.argv.includes('--empty-settings');
 await mkdir(profile, { recursive: true });
 await writeFile(resolve(runtime, 'spokesperson-mock.mjs'), `
 import { LlmAdapter, isAgentLoopRequest } from '@deepseek-ai/dsh-llm';
-import { appendFile } from 'node:fs/promises';
+import { appendFile, readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 export const inject = ['llm'];
 export function apply(ctx) {
@@ -21,6 +21,12 @@ export function apply(ctx) {
       if (options.model === 'b') {
         await delay(1000,undefined,{signal:options.signal});
         const data = JSON.parse(options.messages[0].content[0].text);
+        if ((data.userQuestion.includes('retry-review-once') && data.reviewRound===1 && data.ownDraft) || (data.userQuestion.includes('retry-draft-once') && !data.ownDraft)) {
+          const count = (await readFile(${JSON.stringify(resolve(root, '.dev/workspace/calls.jsonl'))},'utf8')).trim().split(String.fromCharCode(10)).filter(line => {
+            try { const call=JSON.parse(line); if(call.model!=='b')return false; const input=JSON.parse(call.messages[0].content[0].text); return input.userQuestion===data.userQuestion && input.reviewRound===data.reviewRound && !!input.ownDraft===!!data.ownDraft; } catch { return false; }
+          }).length;
+          if (count===1) throw new Error('mock transient failure');
+        }
         if (data.userQuestion.includes('fail') && (!data.userQuestion.includes('review-fail') || data.ownDraft)) throw new Error('mock failure');
         yield {type:'text-delta',index:0,text:'建议采用第一种实现。'};
       } else {
@@ -36,6 +42,7 @@ export function apply(ctx) {
 }
 `);
 const mock = resolve(runtime, 'spokesperson-mock.mjs').replaceAll('\\', '/');
+if (process.argv.includes('--mock-only')) { console.log('Prepared API-free mock module; existing profile preserved.'); process.exit(0); }
 const hostSettings = emptySettings ? '    enabled: false\n    rules: []' : `    enabled: true
     rules:
       - source: { provider: spokesperson-mock, model: a }

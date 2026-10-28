@@ -1,3 +1,4 @@
+/*! Includes @deepseek-ai/dsh-typert-protocol/remote-info (MIT), Copyright (c) 2026 DeepSeek. See THIRD_PARTY_NOTICES.txt. */
 window.__ModuleLoader__.load({id:"@dsh-plugins/model-spokesperson-ui",factory:(require)=>{const module={exports:{}};const exports=module.exports;
 "use strict";
 var __defProp = Object.defineProperty;
@@ -74,6 +75,12 @@ var SettingsSchema = import_zod.z.object({
   });
   if (config.enabled && config.rules.length === 0) ctx.addIssue({ code: "custom", path: ["rules"], message: "\u542F\u7528\u65F6\u81F3\u5C11\u914D\u7F6E\u4E00\u4E2A\u6765\u6E90\u6A21\u578B" });
 });
+var WorkContextSchema = import_zod.z.object({
+  userQuestion: import_zod.z.string(),
+  workContext: import_zod.z.array(import_zod.z.object({ role: import_zod.z.enum(["user", "assistant", "tool"]), source: import_zod.z.string(), content: import_zod.z.array(import_zod.z.json()), callId: import_zod.z.string().optional(), isError: import_zod.z.boolean().optional() }))
+});
+var RetryRequestSchema = import_zod.z.strictObject({ sessionId: import_zod.z.string().min(1), turn: import_zod.z.number().int().min(0), step: import_zod.z.number().int().min(0), originalMessageId: import_zod.z.string().min(1), attemptId: import_zod.z.string().min(1), retryCount: import_zod.z.number().int().min(0) });
+var RetryResponseSchema = import_zod.z.union([import_zod.z.object({ accepted: import_zod.z.literal(true) }), import_zod.z.object({ accepted: import_zod.z.literal(false), message: import_zod.z.string() })]);
 var ReportStageSchema = import_zod.z.object({
   kind: import_zod.z.enum(["draft", "review"]),
   round: import_zod.z.number().int().min(0),
@@ -82,7 +89,8 @@ var ReportStageSchema = import_zod.z.object({
   startedAt: import_zod.z.number(),
   output: import_zod.z.string().optional(),
   usage: import_zod.z.unknown().optional(),
-  finishedAt: import_zod.z.number().optional()
+  finishedAt: import_zod.z.number().optional(),
+  writer: RouteSchema.optional()
 });
 var RewriteSchema = import_zod.z.object({
   schemaVersion: import_zod.z.literal(1),
@@ -107,7 +115,10 @@ var RewriteSchema = import_zod.z.object({
   phase: import_zod.z.enum(["drafting", "reviewing"]).optional(),
   reviewRound: import_zod.z.number().int().min(0).optional(),
   reviewRounds: import_zod.z.number().int().min(0).optional(),
-  stages: import_zod.z.array(ReportStageSchema).optional()
+  stages: import_zod.z.array(ReportStageSchema).optional(),
+  context: WorkContextSchema.optional(),
+  retryCount: import_zod.z.number().int().min(0).optional(),
+  activeStages: import_zod.z.array(import_zod.z.number().int().min(0)).optional()
 });
 var ProjectionSchema = import_zod.z.record(import_zod.z.string(), RewriteSchema);
 var StateSchema = import_zod.z.object({ rows: ProjectionSchema, latestUser: import_zod.z.string(), synced: import_zod.z.array(import_zod.z.string()) });
@@ -128,12 +139,22 @@ function presentation(row, props) {
   if (row.status === "fallback" || row.status === "cancelled") return "fallback";
   return "original";
 }
-function createAssistantView(Default) {
+function createAssistantView(Default, retry) {
   return function SpokespersonAssistant(props) {
     const [copyState, setCopyState] = (0, import_react.useState)("\u590D\u5236 B \u56DE\u590D");
+    const [retryState, setRetryState] = (0, import_react.useState)();
+    const retryLock = (0, import_react.useRef)(false);
+    const alive = (0, import_react.useRef)(true);
+    (0, import_react.useEffect)(() => {
+      alive.current = true;
+      return () => {
+        alive.current = false;
+      };
+    }, []);
     const rows = props.useProjection(PROJECTION);
     const row = rows?.[stepKey(props.node.data.turn, props.node.data.step)];
     const mode = presentation(row, props);
+    const mayRetry = props.useAccess?.("modelSpokesperson/retry") ?? true;
     if (props.groupPart === "reasoning" || mode === "original") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Default, { ...props });
     const data = props.node.data;
     if (mode === "pending") {
@@ -144,10 +165,31 @@ function createAssistantView(Default) {
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { role: "status", "aria-live": "polite", style: hint, children: progress })
       ] });
     }
-    if (mode === "fallback") return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Default, { ...props }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { role: "status", style: hint, children: row?.policyVersion === 2 ? "B \u56DE\u590D\u672A\u5B8C\u6210\uFF0C\u5DF2\u663E\u793A A \u539F\u6587\u3002" : "\u6574\u7406\u672A\u5B8C\u6210\uFF0C\u5DF2\u663E\u793A\u539F\u6587\u3002" })
-    ] });
+    if (mode === "fallback") {
+      const key = `${props.sessionId}:${row.attemptId}:${row.retryCount ?? 0}`;
+      const local = retryState?.key === key ? retryState : void 0;
+      async function retryReport() {
+        if (!retry || !row?.originalMessageId || retryLock.current || !mayRetry) return;
+        retryLock.current = true;
+        setRetryState({ key, busy: true });
+        try {
+          const result = await retry({ sessionId: props.sessionId, turn: row.turn, step: row.step, originalMessageId: row.originalMessageId, attemptId: row.attemptId, retryCount: row.retryCount ?? 0 });
+          if (alive.current) setRetryState({ key, busy: false, message: result.accepted ? void 0 : result.message });
+        } catch {
+          if (alive.current) setRetryState({ key, busy: false, message: "\u91CD\u8BD5\u8BF7\u6C42\u672A\u6210\u529F\uFF0C\u8BF7\u68C0\u67E5\u8FDE\u63A5\u540E\u518D\u8BD5\u3002" });
+        } finally {
+          retryLock.current = false;
+        }
+      }
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Default, { ...props }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { ...hint, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { role: "status", children: row?.policyVersion === 2 ? "B \u56DE\u590D\u672A\u5B8C\u6210\uFF0C\u5DF2\u663E\u793A A \u539F\u6587\u3002" : "\u6574\u7406\u672A\u5B8C\u6210\uFF0C\u5DF2\u663E\u793A\u539F\u6587\u3002" }),
+          retry && row?.policyVersion === 2 && row.originalMessageId && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", disabled: local?.busy || !mayRetry, onClick: () => void retryReport(), style: { font: "inherit", cursor: "pointer" }, children: local?.busy ? "\u6B63\u5728\u63D0\u4EA4\u91CD\u8BD5\u2026" : "\u91CD\u8BD5 B \u56DE\u590D" }),
+          local?.message && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { role: "alert", children: local.message })
+        ] })
+      ] });
+    }
     let inserted = false;
     const blocks = data.blocks.flatMap((block) => {
       if (block.kind !== "text") return [block];
@@ -397,6 +439,167 @@ function mountSettings(ctx) {
   }, () => (0, import_react3.createElement)(SettingsView, { form, loadCatalog })))));
 }
 
+// src/retry-remote.ts
+var import_zod2 = require("zod");
+
+// node_modules/@deepseek-ai/dsh-typert-protocol/lib/types/remote-info.js
+function createTypertRemoteInfo(spec, zod) {
+  return new RemoteInfo(spec, zod);
+}
+var RemoteInfo = class {
+  spec;
+  zod;
+  index;
+  constructor(spec, zod) {
+    this.spec = spec;
+    this.zod = zod;
+  }
+  get package() {
+    return this.spec.package;
+  }
+  get descriptors() {
+    return this.resolve().descriptors;
+  }
+  get methods() {
+    return this.resolve().methods;
+  }
+  resolve() {
+    if (this.index !== void 0)
+      return this.index;
+    const zod = this.zod;
+    const descriptors = [];
+    const methods = /* @__PURE__ */ Object.create(null);
+    for (const [endpoint, definition] of Object.entries(this.spec.methods)) {
+      const separator = endpoint.indexOf("/");
+      const namespace = endpoint.slice(0, separator);
+      const method = endpoint.slice(separator + 1);
+      const parameters = definition.parameters.map((parameter) => ({ ...parameter, wire: parameter.wire ?? parameter.name }));
+      const descriptor = {
+        ...definition,
+        id: `${this.spec.package}#${endpoint}`,
+        namespace,
+        method,
+        parameters,
+        result: definition.result.description === void 0 ? definition.result : new ResultValue(definition.result)
+      };
+      if (definition.invocation.kind === "direct") {
+        const inputs = [];
+        const direct = Object.assign(descriptor, {
+          input(options) {
+            const strict = options?.strict === true;
+            return inputs[strict ? 1 : 0] ??= new NamedInput(parameters, strict, zod);
+          },
+          invoke(remote, input, signal) {
+            const named = input;
+            const values = parameters.map((parameter) => named[parameter.wire]);
+            if (definition.cancellation !== void 0)
+              values.push(signal);
+            const receiver = Reflect.get(remote, namespace);
+            const call = Reflect.get(receiver, method);
+            return call.apply(receiver, values);
+          }
+        });
+        methods[endpoint] = direct;
+      }
+      descriptors.push(descriptor);
+    }
+    return this.index = { descriptors, methods };
+  }
+};
+function optional(parameter) {
+  return parameter.source === "json" && parameter.acceptsUndefined === true;
+}
+var NamedInput = class {
+  parameters;
+  strict;
+  zod;
+  schema;
+  projection;
+  constructor(parameters, strict, zod) {
+    this.parameters = parameters;
+    this.strict = strict;
+    this.zod = zod;
+  }
+  codec(parameter) {
+    return this.strict ? parameter.strictCodec : parameter.codec;
+  }
+  create = () => this.schema ??= this.zod.strictObject(Object.fromEntries(this.parameters.map((parameter) => {
+    const value = this.codec(parameter).create();
+    return [parameter.wire, optional(parameter) ? value.optional() : value.nonoptional()];
+  })));
+  get jsonSchema() {
+    return this.project().jsonSchema;
+  }
+  get jsonSchemaError() {
+    return this.project().jsonSchemaError;
+  }
+  project() {
+    if (this.projection !== void 0)
+      return this.projection;
+    const unavailable = this.parameters.find((parameter) => this.codec(parameter).jsonSchema === void 0);
+    if (unavailable !== void 0) {
+      return this.projection = { jsonSchemaError: this.codec(unavailable).jsonSchemaError ?? `No JSON Schema for parameter ${unavailable.wire}` };
+    }
+    return this.projection = {
+      jsonSchema: {
+        type: "object",
+        properties: Object.fromEntries(this.parameters.map((parameter) => [parameter.wire, {
+          ...this.codec(parameter).jsonSchema,
+          ...parameter.description === void 0 ? {} : { description: parameter.description }
+        }])),
+        required: this.parameters.filter((parameter) => !optional(parameter)).map((parameter) => parameter.wire),
+        additionalProperties: false
+      }
+    };
+  }
+};
+var ResultValue = class {
+  spec;
+  projection;
+  constructor(spec) {
+    this.spec = spec;
+  }
+  get mode() {
+    return this.spec.mode;
+  }
+  get typeSymbol() {
+    return this.spec.typeSymbol;
+  }
+  get create() {
+    return this.spec.create;
+  }
+  get decode() {
+    return this.spec.decode;
+  }
+  get encode() {
+    return this.spec.encode;
+  }
+  get description() {
+    return this.spec.description;
+  }
+  get jsonSchemaError() {
+    return this.spec.jsonSchemaError;
+  }
+  get jsonSchema() {
+    if (this.projection === void 0) {
+      const schema = this.spec.jsonSchema;
+      this.projection = { value: schema === void 0 ? void 0 : { ...schema, description: this.spec.description } };
+    }
+    return this.projection.value;
+  }
+};
+
+// src/retry-remote.ts
+var request = { mode: "strict", typeSymbol: "@dsh-plugins/model-spokesperson#RetryRequest", create: () => RetryRequestSchema };
+var RETRY_REMOTE = createTypertRemoteInfo({ package: "@dsh-plugins/model-spokesperson-host", methods: {
+  "modelSpokesperson/retry": {
+    service: "modelSpokesperson",
+    invocation: { kind: "direct" },
+    parameters: [{ name: "request", source: "json", codec: request, strictCodec: request }],
+    result: { mode: "strict", typeSymbol: "@dsh-plugins/model-spokesperson#RetryResponse", create: () => RetryResponseSchema }
+  }
+} }, import_zod2.z);
+
 // src/client.ts
 var inject = ["slots"];
 var children = {
@@ -405,6 +608,19 @@ var children = {
 };
 function apply(ctx) {
   ctx.inject(["configForms", "remote", "remote.session"], mountSettings);
+  ctx.inject(["remote"], (child) => {
+    child.effect(() => child.remote.$mount(RETRY_REMOTE));
+  });
+  let retryCall;
+  ctx.inject(["remote", "remote.modelSpokesperson"], (child) => {
+    retryCall = async (request2) => {
+      const result = await child.remote.modelSpokesperson.retry(request2);
+      return result.ok ? result.value : { accepted: false, message: "\u91CD\u8BD5\u8BF7\u6C42\u672A\u6210\u529F\uFF0C\u8BF7\u68C0\u67E5\u8FDE\u63A5\u540E\u518D\u8BD5\u3002" };
+    };
+    child.effect(() => () => {
+      retryCall = void 0;
+    });
+  });
   let own;
   let base;
   let changing = false;
@@ -423,7 +639,9 @@ function apply(ctx) {
         ...props,
         renderSlot: (key, owner, options) => props.renderSlot(children[key], owner, options)
       });
-      const View = createAssistantView(Delegate);
+      const View = createAssistantView(Delegate, async (request2) => {
+        return retryCall ? retryCall(request2) : { accepted: false, message: "\u91CD\u8BD5\u670D\u52A1\u6682\u4E0D\u53EF\u7528\uFF0C\u8BF7\u5237\u65B0\u540E\u518D\u8BD5\u3002" };
+      });
       const register = ctx.slots.register;
       const dispose = register.call(ctx.slots, {
         name: "conversation.chat.node",

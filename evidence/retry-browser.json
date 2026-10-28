@@ -1,0 +1,11 @@
+{
+  "version": "0.2.2",
+  "checks": [
+    "review failure exposes Retry B button; only failed/remaining reviews run (2 B calls)",
+    "draft failure retries draft and configured reviews without repeating A (3 B calls)",
+    "ready results replace original row; reload never repeats successful B",
+    "saved one failed review for restart/reinstallation verification"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}

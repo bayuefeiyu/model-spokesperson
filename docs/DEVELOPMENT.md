@@ -22,7 +22,7 @@ Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试�
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/inspect-runtime.py --installation "G:\ai\harness\dsh desktop" --output evidence/runtime-inspection.json
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/prepare-runtime.py
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --from-default-profile web --dump-config
-rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.1.tgz
+rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.2.tgz
 rtk proxy node scripts/prepare-demo.mjs
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --port 31947 --no-open
 ```
@@ -64,3 +64,7 @@ rtk proxy node scripts/browser-e2e.mjs LOCAL_URL
 0.2.0 使用独立 profile `spokesperson-report`、端口 31950。`browser-e2e.mjs` 输出 report-chat.json/png，检查起草/核对进度、无原文闪现与刷新；`browser-fallback.mjs` 使用 review-fail 让独立初稿成功但核对失败，检查 A 原文回退且只调用 A/B/B。mock 不验证模型是否真实遵循写作和核对指令，语义质量需另行验证。
 
 0.2.1 在同一隔离 profile 升级，使用 `rtk proxy node scripts/browser-prompts.mjs LOCAL_URL spokesperson-report` 验证未配置提示词时的默认全文、多行编辑、原生保存、下一次 B 请求精确使用自定义 system、逐项恢复默认及刷新。该脚本最终保留自定义 mock 提示词供重启检查；进程重启/重新安装后加 `--verify-only` 验证保留。结果为 evidence/prompt-settings.json、prompt-restart.json 和 prompt-settings.png，截图只截提示词区域。
+
+0.2.2 可用 `prepare-demo.mjs spokesperson-report --mock-only` 更新隔离 mock 而保留 profile 设置。`browser-retry.mjs LOCAL_URL` 验证起草/核对一次性失败后的按钮、仅调用 B、成功阶段复用及刷新，并保存一个失败会话给重启检查。重启/重新安装后加 `--resume-only` 检查冷历史重试。mock 通过项目内 calls.jsonl 判断指定问题的首次失败，进程重启不重置该事实。结果为 retry-browser.json、retry-restart.json 和 retry-button.png。
+
+rc.3 Client 模块表不公开 dsh-typert-protocol/remote-info；build 显式打包这个没有运行时导入的纯叶模块，SDK 服务、Cordis、React、Zod 继续 external，并携带 THIRD_PARTY_NOTICES.txt。Client 使用 remote.modelSpokesperson 时必须同时注入 remote 和该 namespace；只注入子 namespace 不能读取父服务。

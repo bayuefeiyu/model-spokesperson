@@ -5,6 +5,8 @@ import type { StoredEntry } from '@deepseek-ai/dsh-client-ui-slots';
 import { createElement, type ComponentType } from 'react';
 import { createAssistantView, type AssistantProps } from './presentation.tsx';
 import { mountSettings } from './settings-client.ts';
+import { RETRY_REMOTE } from './retry-remote.ts';
+import type { RetryRequest, RetryResponse } from './contract.ts';
 
 export const inject = ['slots'];
 const children = {
@@ -14,6 +16,15 @@ const children = {
 /** Wrap the live official registration; preserve all of its declared children and injected capabilities. */
 export function apply(ctx: Context) {
   ctx.inject(['configForms', 'remote', 'remote.session'], mountSettings);
+  ctx.inject(['remote'], child => { child.effect(() => child.remote.$mount(RETRY_REMOTE)); });
+  let retryCall: ((request: RetryRequest) => Promise<RetryResponse>) | undefined;
+  ctx.inject(['remote', 'remote.modelSpokesperson'], child => {
+    retryCall = async request => {
+      const result = await child.remote.modelSpokesperson.retry(request);
+      return result.ok ? result.value : { accepted: false, message: '重试请求未成功，请检查连接后再试。' };
+    };
+    child.effect(() => () => { retryCall = undefined; });
+  });
   let own: (() => void) | undefined;
   let base: StoredEntry | undefined;
   let changing = false;
@@ -36,7 +47,9 @@ export function apply(ctx: Context) {
         ...props, renderSlot: (key: keyof typeof children, owner: unknown, options: unknown) =>
           (props.renderSlot as unknown as (key: string, owner: unknown, options: unknown) => unknown)(children[key], owner, options),
       } as AssistantProps);
-      const View = createAssistantView(Delegate);
+      const View = createAssistantView(Delegate, async request => {
+        return retryCall ? retryCall(request) : { accepted: false, message: '重试服务暂不可用，请刷新后再试。' };
+      });
       // The public inspection surface erases registration types. This boundary reuses the
       // inspected registration unchanged except for the wrapper and its shadowing rank.
       const register = ctx.slots.register as unknown as (options: Record<string, unknown>, component: ComponentType<AssistantProps>) => () => void;

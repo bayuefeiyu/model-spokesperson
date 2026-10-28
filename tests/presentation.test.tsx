@@ -55,3 +55,22 @@ test('independent report progress shows drafting/reviewing and never exposes a p
   assert.ok(!JSON.stringify(render.toJSON()).includes('复杂原文'));
   render.unmount();
 });
+
+test('retry button uses viewed session identity, blocks duplicate clicks and displays admission failures', async () => {
+  const requests: unknown[] = [];
+  let finish!: (value: { accepted: false; message: string }) => void;
+  const View = createAssistantView(Default, request => { requests.push(request); return new Promise(resolve => { finish = resolve; }); });
+  const failed: Rewrite = { ...row, policyVersion: 2, promptVersion: 2, status: 'fallback', retryCount: 2 };
+  const render = create(<View {...props(failed, { sessionId: 'viewed-fork' })} />);
+  const button = render.root.findByType('button');
+  act(() => { button.props.onClick(); button.props.onClick(); });
+  assert.equal(requests.length, 1);
+  assert.deepEqual(requests[0], { sessionId: 'viewed-fork', turn: 1, step: 1, originalMessageId: 'm', attemptId: 'a1', retryCount: 2 });
+  assert.equal(render.root.findByType('button').props.disabled, true);
+  await act(async () => { finish({ accepted: false, message: '请等待 A 完成当前工作后再重试。' }); });
+  assert.equal(render.root.findByProps({ role: 'alert' }).children[0], '请等待 A 完成当前工作后再重试。');
+  assert.equal(render.root.findByType('button').props.disabled, false);
+  act(() => render.update(<View {...props(failed, { sessionId: 'viewed-fork', useAccess: () => false })} />));
+  assert.equal(render.root.findByType('button').props.disabled, true);
+  render.unmount();
+});

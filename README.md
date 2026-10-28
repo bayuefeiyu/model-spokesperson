@@ -2,7 +2,7 @@
 
 指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-当前原生 Host + Web Client bundle **0.2.1**，目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。安装包：`dist/dsh-plugins-model-spokesperson-0.2.1.tgz`。
+当前原生 Host + Web Client bundle **0.2.2**，目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。安装包：`dist/dsh-plugins-model-spokesperson-0.2.2.tgz`。
 
 GitHub 私有仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
@@ -23,12 +23,12 @@ GitHub 私有仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 
 使用目标 DSH 安装自带的 CLI 安装到指定 profile（`dsh` 代表该 CLI；本机 shell 使用 RTK）：
 
-在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.2.1`。私有仓库需要安装环境已登录有权限的 GitHub 账号。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
+在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.2.2`。私有仓库需要安装环境已登录有权限的 GitHub 账号。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
 
 ```powershell
-rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.2.1
+rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.2.2
 # 也可下载 Release 安装包后使用本地路径：
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.1.tgz
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.2.tgz
 ```
 
 如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。
@@ -50,7 +50,15 @@ rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-
 
 起草请求的 JSON 字段为 `userQuestion`、`workContext`；核对还包含 `ownDraft`（B 上一稿）、`sourceReport`（A 参考稿）、`reviewRound`。插件独立提供数据，不在提示词中替换占位符。核对轮数为 0 时不使用核对提示词。手动配置字段为 `draftPrompt`、`reviewPrompt`，未设置时沿用内置默认值；用户已经保存的内容在升级后保留。
 
-通过 GitHub URL 安装的旧版本，在同一 profile 的插件管理器卸载后重装 0.2.1；卸载保留 profile 配置。上游 registry/npm 更新入口不适用于 Git URL 来源。也可以手动在该 profile 的 `cordis.patch.yml` 加入或合并：
+### 失败后重试（0.2.2）
+
+“B 回复未完成，已显示 A 原文。”旁提供 **重试 B 回复**。只重新请求 B，复用那次回复的工作材料，不重新调用 A 或执行工具。
+
+核对失败时复用成功的 B 初稿和前几轮核对结果，从失败阶段继续。重试使用当前映射的 B、提示词、核对轮数和限额；如果 B 模型或起草提示词/表达偏好改变，会重新独立起草。只有输入、提示词和模型完全一致的成功阶段才会复用，失败调用与用量保留累计。
+
+不自动重试。重复点击有前后端保护；A 正在工作时不能发起重试，新用户输入或取消会停止进行中的重试。刷新或重启后仍可手动重试保留了工作材料的 0.2.x 失败记录；原文已删除、重生成或材料缺失时会提示无法重试。旧版首次调用前失败若没有快照，只能从仍有效的原报告之前的历史恢复材料，不会混入后来的对话。0.1.x 润色记录不支持此入口。
+
+通过 GitHub URL 安装的旧版本，在同一 profile 的插件管理器卸载后重装 0.2.2；卸载保留 profile 配置。上游 registry/npm 更新入口不适用于 Git URL 来源。也可以手动在该 profile 的 `cordis.patch.yml` 加入或合并：
 
 ```yaml
 - id: model-spokesperson-host

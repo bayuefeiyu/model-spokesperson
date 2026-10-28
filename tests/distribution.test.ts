@@ -24,5 +24,7 @@ test('the GitHub repository root is a ready-to-load DSH bundle without build lif
   }
   const ui = JSON.parse(await readFile(resolve(root, 'packages/ui/package.json'), 'utf8'));
   const client = resolve(root, 'packages/ui', ui.exports['./client']);
-  assert.ok((await readFile(client, 'utf8')).includes('window.__ModuleLoader__.load'));
+  const source = await readFile(client, 'utf8');
+  assert.ok(source.includes('window.__ModuleLoader__.load'));
+  assert.ok(!source.includes('require("@deepseek-ai/dsh-typert-protocol/remote-info")'), 'rc.3 does not expose the pure metadata helper in its Client module table');
 });
