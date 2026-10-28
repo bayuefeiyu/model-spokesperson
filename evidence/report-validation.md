@@ -32,6 +32,10 @@ B 先读取 A 本次报告生成之前的有效工作快照，独立起草。后
 
 机器记录见 [report-validation.json](report-validation.json)、[设置](report-settings.json)、[重启](report-settings-restart.json)、[聊天](report-chat.json)、[核对失败](report-fallback.json)。界面截图：[设置](report-settings.png)、[聊天](report-chat.png)。分发与发布结果以机器记录的 `githubSource`/`release` 为准。
 
+## GitHub 交付
+
+私有仓库已发布 [v0.2.0 预发行版](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.2.0)，标签指向提交 141c043f56ae173232dc0477bf0486f81e3df359。发行包 50883 字节，SHA-256 为 `d6387c0ad7ae00989e1d807d9eafe7fb242d01ad76fdcb076f0c539ba33b7ca4`，同时提供 SHA256SUMS.txt。两个附件均已通过 GitHub API 下载到内存复核，摘要与本地一致。
+
 ## 边界
 
 没有配置真实 A/B，因此未验证真实独立写作、保留 B 文风、事实纠错的质量、费用和延迟。mock 只验证输入隔离、提示内容、调用链及展示/持久化行为，不能证明模型一定遵守指令。新报告允许独立组织，不再以 A 成稿的数字与代码顺序作等同性校验。

@@ -113,5 +113,27 @@
       "bundleDisabledAndReenabled": true,
       "pageErrors": []
     }
+  },
+  "release": {
+    "version": "0.2.0",
+    "repository": "https://github.com/bayuefeiyu/model-spokesperson",
+    "private": true,
+    "release": "https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.2.0",
+    "commit": "141c043f56ae173232dc0477bf0486f81e3df359",
+    "assets": [
+      {
+        "name": "dsh-plugins-model-spokesperson-0.2.0.tgz",
+        "size": 50883,
+        "digest": "sha256:d6387c0ad7ae00989e1d807d9eafe7fb242d01ad76fdcb076f0c539ba33b7ca4",
+        "url": "https://github.com/bayuefeiyu/model-spokesperson/releases/download/v0.2.0/dsh-plugins-model-spokesperson-0.2.0.tgz"
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "size": 107,
+        "digest": "sha256:3a4c50b1e0f6042657debff36de0c821ecba0a8633f3d179db14d94b5bfbabbd",
+        "url": "https://github.com/bayuefeiyu/model-spokesperson/releases/download/v0.2.0/SHA256SUMS.txt"
+      }
+    ],
+    "downloadsVerified": true
   }
 }
