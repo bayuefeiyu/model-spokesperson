@@ -1,6 +1,18 @@
 # 开发任务状态
 
-## 0.2.2 手动重试 B（当前阶段）
+## 0.2.3 插件详情页一键更新（当前阶段）
+
+- [x] 公开仓库后，Client 直接读取 GitHub 稳定 Release；无 Host 路由、token 或第二份版本存储。
+- [x] `plugins.detail.actions` 列表槽注册，仅对本 bundle 显示检查/更新控件。
+- [x] 使用 Release 的 npm tarball URL 覆盖安装，不调用 `removeBundle`；更新结果区分 applied、restart-required、overridden 和失败。
+- [x] 请求超时、五分钟缓存、限流/网络/无稳定 Release/不兼容版本的可读回退；不静默自动安装。
+- [x] 类型检查和 56 项测试通过；新增 semver、Release 资产选择、更新成功/重启/失败/重试和 bundle 过滤测试。
+- [x] 隔离 Web 实际检查、按钮与 0.2.1→v0.2.2 覆盖安装；表达偏好、核对轮数保留，页面无错误。
+- [x] 0.2.3 类型检查、56 项测试、构建、tarball 打包和隔离 Web 验收。
+- [x] 2026-10-29 上传前重新通过类型检查、56 项测试、构建和打包；产物摘要与外部验收记录一致。
+- [ ] 0.2.3 tag 和 GitHub Release；日常 desktop profile 仍待用户确认后安装。
+
+## 0.2.2 手动重试 B
 
 - [x] 失败行的重试按钮、重复点击保护、错误提示和当前会话身份。
 - [x] 原生 Typert Remote、会话资源边界、空闲维护任务；复用工作材料和成功阶段，不重跑 A/工具。

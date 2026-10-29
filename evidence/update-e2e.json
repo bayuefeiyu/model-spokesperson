@@ -1,0 +1,10 @@
+{
+  "from": "0.2.1",
+  "to": "0.2.2",
+  "source": "release tarball dsh-plugins-model-spokesperson-0.2.2.tgz",
+  "settingsPreserved": true,
+  "style": "结论先行，保留事实。",
+  "reviewRounds": "2",
+  "apiTransport": "intercepted release metadata; install used the real public release asset",
+  "pageErrors": []
+}

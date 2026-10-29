@@ -26,7 +26,7 @@ __export(client_exports, {
   inject: () => inject
 });
 module.exports = __toCommonJS(client_exports);
-var import_react4 = require("react");
+var import_react6 = require("react");
 
 // src/presentation.tsx
 var import_react = require("react");
@@ -439,6 +439,359 @@ function mountSettings(ctx) {
   }, () => (0, import_react3.createElement)(SettingsView, { form, loadCatalog })))));
 }
 
+// src/update-client.tsx
+var import_react5 = require("react");
+
+// src/update-action.tsx
+var import_react4 = require("react");
+
+// src/update.ts
+var UPDATE_REPOSITORY = "bayuefeiyu/model-spokesperson";
+var UPDATE_REPO_URL = `https://github.com/${UPDATE_REPOSITORY}`;
+var UPDATE_PACKAGE = "@dsh-plugins/model-spokesperson";
+var RELEASES_API = `https://api.github.com/repos/${UPDATE_REPOSITORY}/releases?per_page=100`;
+var REQUEST_TIMEOUT_MS = 1e4;
+var CACHE_MS = 5 * 6e4;
+var UpdateCheckError = class extends Error {
+  constructor(kind, message) {
+    super(message);
+    this.kind = kind;
+    this.name = "UpdateCheckError";
+  }
+};
+function parseVersion(value) {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(value.trim());
+  if (!match) return;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    prerelease: match[4] ? match[4].split(".").map((part) => /^\d+$/.test(part) ? Number(part) : part) : []
+  };
+}
+function compareIdentifier(left, right) {
+  const leftNumber = typeof left === "number";
+  const rightNumber = typeof right === "number";
+  if (leftNumber && rightNumber) return left - right;
+  if (leftNumber) return -1;
+  if (rightNumber) return 1;
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+function compareVersions(left, right) {
+  const a = parseVersion(left);
+  const b = parseVersion(right);
+  if (!a || !b) return 0;
+  if (a.major !== b.major) return a.major - b.major;
+  if (a.minor !== b.minor) return a.minor - b.minor;
+  if (a.patch !== b.patch) return a.patch - b.patch;
+  if (a.prerelease.length === 0 && b.prerelease.length > 0) return 1;
+  if (a.prerelease.length > 0 && b.prerelease.length === 0) return -1;
+  for (let index = 0; index < Math.max(a.prerelease.length, b.prerelease.length); index += 1) {
+    const leftPart = a.prerelease[index];
+    const rightPart = b.prerelease[index];
+    if (leftPart === void 0) return -1;
+    if (rightPart === void 0) return 1;
+    const order = compareIdentifier(leftPart, rightPart);
+    if (order !== 0) return order;
+  }
+  return 0;
+}
+function isNewer(current, candidate) {
+  return compareVersions(candidate, current) > 0;
+}
+function assetUrlOf(value) {
+  if (typeof value !== "string") return;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname !== "github.com") return;
+    return url.href;
+  } catch {
+    return;
+  }
+}
+function releaseCandidates(data) {
+  if (!Array.isArray(data)) return [];
+  const candidates = [];
+  for (const item of data) {
+    if (typeof item !== "object" || item === null) continue;
+    const release = item;
+    if (release.draft === true) continue;
+    const tag = typeof release.tag_name === "string" ? release.tag_name : void 0;
+    const parsed = tag === void 0 ? void 0 : parseVersion(tag);
+    if (tag === void 0 || parsed === void 0 || parsed.prerelease.length > 0) continue;
+    const version = tag.replace(/^v/i, "");
+    const assets = Array.isArray(release.assets) ? release.assets : [];
+    const assetsOf = assets.filter((asset) => typeof asset === "object" && asset !== null);
+    const expected = `dsh-plugins-model-spokesperson-${version}.tgz`;
+    const chosen = assetsOf.find((asset) => asset.name === expected && assetUrlOf(asset.browser_download_url) !== void 0) ?? assetsOf.find((asset) => typeof asset.name === "string" && asset.name.endsWith(".tgz") && assetUrlOf(asset.browser_download_url) !== void 0);
+    if (chosen === void 0) continue;
+    const assetName = typeof chosen.name === "string" ? chosen.name : expected;
+    const assetUrl = assetUrlOf(chosen.browser_download_url);
+    if (assetUrl === void 0) continue;
+    candidates.push({
+      version,
+      tag,
+      htmlUrl: typeof release.html_url === "string" ? release.html_url : `${UPDATE_REPO_URL}/releases/tag/${encodeURIComponent(tag)}`,
+      assetName,
+      assetUrl
+    });
+  }
+  return candidates;
+}
+function latestRelease(data) {
+  const candidates = releaseCandidates(data);
+  let best;
+  for (const candidate of candidates) {
+    if (best === void 0 || compareVersions(candidate.version, best.version) > 0) best = candidate;
+  }
+  if (best === void 0) return;
+  return { ...best, checkedAt: Date.now() };
+}
+var cached;
+async function fetchLatestRelease(options = {}) {
+  if (!options.force && cached !== void 0 && Date.now() - cached.at < CACHE_MS) return cached.release;
+  const fetcher = options.fetcher ?? globalThis.fetch;
+  if (typeof fetcher !== "function") throw new UpdateCheckError("network", "\u5F53\u524D\u73AF\u5883\u4E0D\u652F\u6301\u68C0\u67E5\u66F4\u65B0\u3002");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetcher(RELEASES_API, {
+      headers: { Accept: "application/vnd.github+json" },
+      signal: controller.signal
+    });
+  } catch {
+    if (controller.signal.aborted) throw new UpdateCheckError("timeout", "\u68C0\u67E5\u66F4\u65B0\u8D85\u65F6\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002");
+    throw new UpdateCheckError("network", "\u65E0\u6CD5\u8FDE\u63A5 GitHub\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u540E\u91CD\u8BD5\u3002");
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.ok) {
+    if (response.status === 403 || response.status === 429) throw new UpdateCheckError("rate-limit", "GitHub \u68C0\u67E5\u6B21\u6570\u6682\u65F6\u53D7\u9650\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002");
+    if (response.status === 404) throw new UpdateCheckError("http", "GitHub \u4ED3\u5E93\u6216\u53D1\u5E03\u4E0D\u53EF\u7528\u3002");
+    throw new UpdateCheckError("http", `GitHub \u8FD4\u56DE ${response.status}\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002`);
+  }
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new UpdateCheckError("http", "GitHub \u8FD4\u56DE\u4E86\u65E0\u6CD5\u8BFB\u53D6\u7684\u53D1\u5E03\u6570\u636E\u3002");
+  }
+  const release = latestRelease(data);
+  if (release === void 0) throw new UpdateCheckError("empty", "\u6CA1\u6709\u627E\u5230\u5E26\u5B89\u88C5\u5305\u7684\u7A33\u5B9A\u7248\u672C\u3002");
+  cached = { release, at: Date.now() };
+  return release;
+}
+
+// src/update-action.tsx
+var import_jsx_runtime3 = require("react/jsx-runtime");
+var wrap = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  fontFamily: "system-ui, sans-serif",
+  fontSize: 12,
+  lineHeight: 1.4
+};
+var button2 = {
+  font: "inherit",
+  color: "var(--dsw-alias-label-primary, #1e293b)",
+  background: "var(--dsw-alias-background-primary, transparent)",
+  border: "1px solid var(--dsw-alias-border-l1, #cbd5e1)",
+  borderRadius: 8,
+  padding: "4px 10px",
+  cursor: "pointer"
+};
+var disabledButton = { ...button2, cursor: "default", opacity: 0.65 };
+var note2 = { color: "var(--dsw-alias-label-secondary, #64748b)" };
+var errorText = { ...note2, color: "var(--dsw-alias-state-error-primary, #b91c1c)" };
+var defaultCheck = (force = false) => fetchLatestRelease({ force });
+var reloadPage = () => {
+  if (typeof window !== "undefined") window.location.reload();
+};
+function currentVersion(subject) {
+  return subject.kind === "bundle" ? subject.pkg.version : void 0;
+}
+function checkMessage(error) {
+  return error instanceof UpdateCheckError ? error.message : "\u68C0\u67E5\u66F4\u65B0\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002";
+}
+function installMessage(outcome) {
+  switch (outcome.code) {
+    case "already-installed":
+      return "\u5DF2\u5B89\u88C5\u8BE5\u7248\u672C\uFF0C\u65E0\u9700\u91CD\u590D\u66F4\u65B0\u3002";
+    case "incompatible-version":
+      return "\u65B0\u7248\u672C\u4E0E\u5F53\u524D DSH \u7248\u672C\u4E0D\u517C\u5BB9\uFF0C\u672A\u5B89\u88C5\u3002";
+    case "not-found":
+      return "\u6CA1\u6709\u627E\u5230\u8BE5\u7248\u672C\u7684\u5B89\u88C5\u6765\u6E90\u3002";
+    case "network":
+      return "\u65E0\u6CD5\u8BBF\u95EE GitHub\uFF0C\u539F\u7248\u672C\u4ECD\u4FDD\u7559\u3002";
+    case "build-blocked":
+      return "\u4F9D\u8D56\u811A\u672C\u5BA1\u6279\u963B\u6B62\u4E86\u5B89\u88C5\uFF0C\u8BF7\u5148\u5728\u63D2\u4EF6\u7BA1\u7406\u5668\u5904\u7406\u3002";
+    case "management-required":
+      return "\u5F53\u524D profile \u6CA1\u6709\u53EF\u7528\u7684\u63D2\u4EF6\u7BA1\u7406\u5668\u3002";
+    case "ambiguous-install":
+      return "\u5B89\u88C5\u7ED3\u679C\u4E0D\u660E\u786E\uFF0C\u8BF7\u5728\u63D2\u4EF6\u7BA1\u7406\u5668\u68C0\u67E5\u3002";
+    case "operation-error":
+      return "\u5B89\u88C5\u5931\u8D25\uFF0C\u539F\u7248\u672C\u4ECD\u4FDD\u7559\u3002";
+    case "remote":
+      return "\u66F4\u65B0\u8BF7\u6C42\u672A\u9001\u8FBE Host\uFF0C\u8BF7\u68C0\u67E5\u8FDE\u63A5\u540E\u91CD\u8BD5\u3002";
+    default:
+      return outcome.application === "cancelled" ? "\u66F4\u65B0\u5DF2\u53D6\u6D88\uFF0C\u539F\u7248\u672C\u4ECD\u4FDD\u7559\u3002" : "\u66F4\u65B0\u5931\u8D25\uFF0C\u539F\u7248\u672C\u4ECD\u4FDD\u7559\u3002";
+  }
+}
+function UpdateAction({ subject, check = defaultCheck, install, reload = reloadPage }) {
+  const current = currentVersion(subject);
+  const eligible = subject.kind === "bundle" && subject.pkg.name === UPDATE_PACKAGE && subject.pkg.installed;
+  const [phase, setPhase] = (0, import_react4.useState)("checking");
+  const [release, setRelease] = (0, import_react4.useState)();
+  const [message, setMessage] = (0, import_react4.useState)("");
+  const [installedVersion, setInstalledVersion] = (0, import_react4.useState)();
+  const alive = (0, import_react4.useRef)(false);
+  const settled = (0, import_react4.useRef)(false);
+  (0, import_react4.useEffect)(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    if (!eligible || settled.current) return;
+    let active = true;
+    setPhase("checking");
+    setMessage("");
+    void check(false).then((value) => {
+      if (!active || !alive.current) return;
+      setRelease(value);
+      setPhase(current !== void 0 && !isNewer(current, value.version) ? "current" : "available");
+    }, (error) => {
+      if (!active || !alive.current) return;
+      setPhase("error");
+      setMessage(checkMessage(error));
+    });
+    return () => {
+      active = false;
+    };
+  }, [eligible, current, check]);
+  if (!eligible) return null;
+  function retryCheck() {
+    setPhase("checking");
+    setMessage("");
+    setRelease(void 0);
+    void check(true).then((value) => {
+      if (!alive.current) return;
+      setRelease(value);
+      setPhase(current !== void 0 && !isNewer(current, value.version) ? "current" : "available");
+    }, (error) => {
+      if (!alive.current) return;
+      setPhase("error");
+      setMessage(checkMessage(error));
+    });
+  }
+  async function startUpdate() {
+    if (release === void 0 || install === void 0) {
+      setPhase("error");
+      setMessage("\u66F4\u65B0\u670D\u52A1\u6682\u4E0D\u53EF\u7528\uFF0C\u8BF7\u5237\u65B0\u9875\u9762\u540E\u91CD\u8BD5\u3002");
+      return;
+    }
+    setPhase("updating");
+    setMessage("");
+    try {
+      const outcome = await install(release.assetUrl);
+      if (!alive.current) return;
+      const version = outcome.version ?? release.version;
+      setInstalledVersion(version);
+      if (outcome.application === "applied") {
+        settled.current = true;
+        setPhase("done");
+        setMessage("");
+      } else if (outcome.application === "restart-required") {
+        settled.current = true;
+        setPhase("restart");
+      } else if (outcome.application === "overridden") {
+        settled.current = true;
+        setPhase("done");
+        setMessage("\u5DF2\u5B89\u88C5\uFF0C\u4F46\u542F\u7528\u72B6\u6001\u88AB\u66F4\u9AD8\u5C42\u914D\u7F6E\u8986\u76D6\u3002");
+      } else {
+        setPhase("error");
+        setMessage(installMessage(outcome));
+      }
+    } catch {
+      if (!alive.current) return;
+      setPhase("error");
+      setMessage("\u66F4\u65B0\u8BF7\u6C42\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u8FDE\u63A5\u540E\u91CD\u8BD5\u3002");
+    }
+  }
+  if (phase === "checking") {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: wrap, role: "status", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", style: disabledButton, disabled: true, children: "\u68C0\u67E5\u66F4\u65B0\u2026" }) });
+  }
+  if (phase === "updating") {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { style: wrap, role: "status", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", style: disabledButton, disabled: true, children: "\u66F4\u65B0\u4E2D\u2026" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: note2, children: "\u6B63\u5728\u5B89\u88C5" })
+    ] });
+  }
+  if (phase === "done") {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { style: wrap, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", style: button2, onClick: reload, children: "\u5237\u65B0\u9875\u9762" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: note2, children: message || `\u5DF2\u66F4\u65B0\u5230 v${installedVersion ?? release?.version ?? ""}` })
+    ] });
+  }
+  if (phase === "restart") {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: wrap, role: "status", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { style: note2, children: [
+      "\u5DF2\u5B89\u88C5 v",
+      installedVersion ?? release?.version ?? "",
+      "\uFF0C\u91CD\u542F DSH \u540E\u751F\u6548\u3002"
+    ] }) });
+  }
+  if (phase === "error") {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { style: wrap, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", style: button2, onClick: release === void 0 ? retryCheck : startUpdate, children: release === void 0 ? "\u91CD\u8BD5\u68C0\u67E5" : "\u91CD\u8BD5\u66F4\u65B0" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: errorText, role: "alert", children: message })
+    ] });
+  }
+  if (phase === "available" && release !== void 0) {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { style: wrap, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("button", { type: "button", style: button2, "aria-label": `\u66F4\u65B0\u5230 v${release.version}`, onClick: startUpdate, children: [
+        "\u66F4\u65B0\u5230 v",
+        release.version
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { style: note2, children: [
+        "\u5F53\u524D v",
+        current ?? "\u672A\u77E5"
+      ] })
+    ] });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: wrap, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("button", { type: "button", style: button2, title: "\u91CD\u65B0\u68C0\u67E5\u66F4\u65B0", onClick: retryCheck, children: [
+    "\u5DF2\u662F\u6700\u65B0",
+    current === void 0 ? "" : ` v${current}`
+  ] }) });
+}
+
+// src/update-client.tsx
+function mountUpdateAction(ctx) {
+  ctx.effect(() => ctx.slots.inject("plugins.detail.actions", () => ctx.slots.register({
+    name: "plugins.detail.actions",
+    id: "model-spokesperson-update"
+  }, (props) => (0, import_react5.createElement)(UpdateAction, {
+    subject: props.subject,
+    install: async (spec) => {
+      try {
+        const manager = ctx.remote.pluginManager;
+        if (manager === void 0) return { application: "failed", code: "management-required" };
+        const result = await manager.installBundle(spec, { enabled: true });
+        if (!result.ok || result.value === void 0) return { application: "failed", code: "remote" };
+        return {
+          application: result.value.application,
+          version: result.value.version,
+          code: result.value.error?.code
+        };
+      } catch {
+        return { application: "failed", code: "remote" };
+      }
+    }
+  }))));
+}
+
 // src/retry-remote.ts
 var import_zod2 = require("zod");
 
@@ -608,6 +961,7 @@ var children = {
 };
 function apply(ctx) {
   ctx.inject(["configForms", "remote", "remote.session"], mountSettings);
+  ctx.inject(["remote", "remote.pluginManager"], mountUpdateAction);
   ctx.inject(["remote"], (child) => {
     child.effect(() => child.remote.$mount(RETRY_REMOTE));
   });
@@ -635,7 +989,7 @@ function apply(ctx) {
       base = original;
       if (!original) return;
       const Default = original.component;
-      const Delegate = (props) => (0, import_react4.createElement)(Default, {
+      const Delegate = (props) => (0, import_react6.createElement)(Default, {
         ...props,
         renderSlot: (key, owner, options) => props.renderSlot(children[key], owner, options)
       });

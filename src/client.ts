@@ -5,6 +5,7 @@ import type { StoredEntry } from '@deepseek-ai/dsh-client-ui-slots';
 import { createElement, type ComponentType } from 'react';
 import { createAssistantView, type AssistantProps } from './presentation.tsx';
 import { mountSettings } from './settings-client.ts';
+import { mountUpdateAction } from './update-client.tsx';
 import { RETRY_REMOTE } from './retry-remote.ts';
 import type { RetryRequest, RetryResponse } from './contract.ts';
 
@@ -16,6 +17,7 @@ const children = {
 /** Wrap the live official registration; preserve all of its declared children and injected capabilities. */
 export function apply(ctx: Context) {
   ctx.inject(['configForms', 'remote', 'remote.session'], mountSettings);
+  ctx.inject(['remote', 'remote.pluginManager'], mountUpdateAction);
   ctx.inject(['remote'], child => { child.effect(() => child.remote.$mount(RETRY_REMOTE)); });
   let retryCall: ((request: RetryRequest) => Promise<RetryResponse>) | undefined;
   ctx.inject(['remote', 'remote.modelSpokesperson'], child => {

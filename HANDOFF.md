@@ -1,6 +1,8 @@
 # 开发交接
 
-当前版本 0.2.2，针对 DSH 0.2.1-rc.3。安装包 dist/dsh-plugins-model-spokesperson-0.2.2.tgz；使用步骤见 README。独立报告流程见 evidence/report-validation.md，提示词设置见 evidence/prompt-validation.md，手动重试见 evidence/retry-validation.md。前端插件详情页可配置 A/B、开关、文风、完整的起草/核对提示词、核对轮数和用户预算。旧版本验收文档保留作历史证据。
+当前版本 0.2.3，针对 DSH 0.2.1-rc.3。安装包 dist/dsh-plugins-model-spokesperson-0.2.3.tgz；使用步骤见 README。独立报告流程见 evidence/report-validation.md，提示词设置见 evidence/prompt-validation.md，手动重试见 evidence/retry-validation.md，一键更新见 evidence/update-validation.md。前端插件详情页可配置 A/B、开关、文风、完整的起草/核对提示词、核对轮数和用户预算，并新增公开仓库的一键更新入口。旧版本验收文档保留作历史证据。
+
+0.2.3 的 update.ts / update-action.tsx / update-client.tsx 在 plugins.detail.actions 注册只针对本 bundle 的更新控件。仓库已公开，因此检查直接在浏览器读取 GitHub Releases，不使用 Host 路由或 token；只接受带 tgz 资产的稳定 Release，缓存五分钟，超时十秒。安装使用 Release 的 npm tarball URL 调 pluginManager.installBundle 覆盖安装，不调用 removeBundle，避免卸载正在显示按钮的自身；tarball 也跳过 Host 固定的五秒 Git 连接预检。返回 applied 时提示刷新 Client，restart-required 时提示重启；设置、历史与失败回退由现有 profile 机制保留。0.2.2 及更早版本需先手动安装 0.2.3。
 
 0.2.2 的 retry-service.ts/retry-remote.ts 定义原生 modelSpokesperson/retry 入口，Host 和 Client 共用严格协议描述符，服务使用会话资源边界。客户端只发送当前查看的 sessionId 和失败记录身份，不传入工作材料。Host 使用原生 sessionController.resolveAgent 恢复冷会话、runMaintenance 独占空闲操作，拒绝 A 正忙、陈旧消息、重复计数或未启用路由。不调用 A 或工具；新输入取消重试。
 
@@ -12,7 +14,7 @@ report-progress.ts 根据模型、提示词和输入的精确一致性复用连�
 
 ## 已实现
 
-精确路由、纯文字筛选、工具直通、无工具 B、多步起草/核对、用户预算/超时/取消/FIFO 并发、失败回退、逐步及汇总 usage、原消息和 replayState 保留、持久化、原行展示/原文/复制、下次输入的日志化 B 回复同步。未修改 agent-loop、日常 ASAR 或日常配置。
+精确路由、纯文字筛选、工具直通、无工具 B、多步起草/核对、用户预算/超时/取消/FIFO 并发、失败回退、逐步及汇总 usage、原消息和 replayState 保留、持久化、原行展示/原文/复制、下次输入的日志化 B 回复同步、失败后手动重试、公开仓库的一键更新。未修改 agent-loop、日常 ASAR 或日常配置。
 
 src/host.ts 是入口，work-context.ts 在 assistant start 时提取有效公开工作记录并用旧 B 稿替代已展示的旧 A 回复，prompt.ts 分离独立起草和核对职责。contract.ts 管理兼容 schema；policy.ts 新稿只检查非空，旧机械校验仅用于 v1 恢复；projection.ts 增量折叠，client.ts 包装官方 slot，presentation.tsx 仅构造渲染副本。stages 保存每步输入/输出/用量，wire 不发送完整工作材料；只有最终稿进入 rewrittenText，恢复不能把初稿直接发布。
 
@@ -22,7 +24,7 @@ src/config.ts 声明原生 volatile 配置，保留 Schemastery 元数据并补�
 
 ## 验证与复现
 
-运行 npm run check / npm test / npm run build / npm run pack:plugin，前面加 rtk proxy。0.2.0 实际结果见 evidence/report-validation.md 及 report-*.json/png。锁文件保留。没有真实模型费用。
+运行 npm run check / npm test / npm run build / npm run pack:plugin，前面加 rtk proxy。0.2.3 实际结果见 evidence/update-validation.md 与 update-*.json/png；0.2.2 及更早结果见 evidence/report-validation.md、prompt-validation.md、retry-validation.md 及对应 json/png。锁文件保留。没有真实模型费用。
 
 隔离启动严格遵循 docs/DEVELOPMENT.md，不在用户日常 profile 中复现。profile 位于 .dev/runtime/spokesperson-home，默认工作区覆盖到 .dev/documents。早期 home 留在 .dev，非正式验收数据。
 

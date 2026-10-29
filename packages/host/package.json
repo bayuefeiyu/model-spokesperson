@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-plugins/model-spokesperson-host", "version": "0.2.2", "type": "module",
+  "name": "@dsh-plugins/model-spokesperson-host", "version": "0.2.3", "type": "module",
   "engines": { "dsh": "0.2.1-rc.3" },
   "description": "A works; B independently drafts and reviews reports without tools",
   "main": "lib/index.js", "exports": { ".": "./lib/index.js", "./package.json": "./package.json" },

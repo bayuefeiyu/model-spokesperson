@@ -22,7 +22,7 @@ Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试�
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/inspect-runtime.py --installation "G:\ai\harness\dsh desktop" --output evidence/runtime-inspection.json
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/prepare-runtime.py
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --from-default-profile web --dump-config
-rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.2.tgz
+rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.3.tgz
 rtk proxy node scripts/prepare-demo.mjs
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --port 31947 --no-open
 ```
@@ -66,5 +66,7 @@ rtk proxy node scripts/browser-e2e.mjs LOCAL_URL
 0.2.1 在同一隔离 profile 升级，使用 `rtk proxy node scripts/browser-prompts.mjs LOCAL_URL spokesperson-report` 验证未配置提示词时的默认全文、多行编辑、原生保存、下一次 B 请求精确使用自定义 system、逐项恢复默认及刷新。该脚本最终保留自定义 mock 提示词供重启检查；进程重启/重新安装后加 `--verify-only` 验证保留。结果为 evidence/prompt-settings.json、prompt-restart.json 和 prompt-settings.png，截图只截提示词区域。
 
 0.2.2 可用 `prepare-demo.mjs spokesperson-report --mock-only` 更新隔离 mock 而保留 profile 设置。`browser-retry.mjs LOCAL_URL` 验证起草/核对一次性失败后的按钮、仅调用 B、成功阶段复用及刷新，并保存一个失败会话给重启检查。重启/重新安装后加 `--resume-only` 检查冷历史重试。mock 通过项目内 calls.jsonl 判断指定问题的首次失败，进程重启不重置该事实。结果为 retry-browser.json、retry-restart.json 和 retry-button.png。
+
+0.2.3 的更新入口直接在 Client 读取公开 GitHub Releases，不使用 Host 路由。隔离验证使用 `scripts/browser-update.mjs LOCAL_URL 0.2.3 v0.2.2`：打开插件详情页，确认更新控件只出现在本 bundle，并用 fixture Release 验证“已是最新/可更新”状态；`scripts/browser-update-e2e.mjs LOCAL_URL` 用 0.2.1 测试候选点击更新到真实公开 v0.2.2 资产，检查版本、来源、表达偏好和核对轮数保留。fixture 只替代 GitHub 元数据请求，安装仍从公开 Release 下载；不操作日常 desktop profile。真实 API 限流时记录为网络限制，不伪造通过。
 
 rc.3 Client 模块表不公开 dsh-typert-protocol/remote-info；build 显式打包这个没有运行时导入的纯叶模块，SDK 服务、Cordis、React、Zod 继续 external，并携带 THIRD_PARTY_NOTICES.txt。Client 使用 remote.modelSpokesperson 时必须同时注入 remote 和该 namespace；只注入子 namespace 不能读取父服务。

@@ -1,6 +1,6 @@
 # 实现设计
 
-当前 0.2.2，目标 DSH 0.2.1-rc.3。独立报告流程验收见 `evidence/report-validation.md`，提示词设置见 `evidence/prompt-validation.md`，重试见 `evidence/retry-validation.md`；其他旧版本证据按其版本保留。
+当前 0.2.3，目标 DSH 0.2.1-rc.3。独立报告流程验收见 `evidence/report-validation.md`，提示词设置见 `evidence/prompt-validation.md`，重试见 `evidence/retry-validation.md`，一键更新见 `evidence/update-validation.md`；其他旧版本证据按其版本保留。
 
 ```text
 用户 → A 的正常 AgentLoop → 原始助手消息/工具事件 → 原会话日志
@@ -39,6 +39,16 @@ B 第一请求只有 userQuestion/workContext，没有 A 本次报告。第一�
 新记录在 A 成稿提交后即保存工作 context，覆盖首次调用前超限等失败。已有 0.2.x 记录可从第一次 B 输入恢复；若不存在，才使用当前有效历史中 A 原报告之前的前缀，不纳入后来的对话。找不到原报告或材料时拒绝，不猜造上下文。UI 采用 props.sessionId，避免分叉继承的 row.sessionId 把重试发到父会话。0.1.x 润色记录不提供入口。
 
 状态按 agent / session / turn / step / attempt 隔离。FIFO 队列限并发，超时包含排队。新输入、显式取消、agent 销毁或卸载取消挂起任务；不遵守取消的 provider 的迟到结果也不能提交。失败回退不重跑 A，错误 reason 不包含 provider 异常细节。
+
+## 插件详情页更新（0.2.3）
+
+仓库公开后，Client 直接在浏览器读取 `api.github.com/repos/bayuefeiyu/model-spokesperson/releases`，不增加 Host 路由、token 或第二份版本存储。只接受带 `dsh-plugins-model-spokesperson-X.Y.Z.tgz` 资产的稳定 Release；缓存五分钟、请求上限十秒；当前版本来自详情页公开的 `subject.pkg.version`。GitHub 的 v0.2.x 都是 prerelease，因此读取完整 releases 列表而不是 `releases/latest`，避免被 prerelease 标志跳过。
+
+更新控件注册在 `plugins.detail.actions` 列表槽，只对 `@dsh-plugins/model-spokesperson` 且已安装的 bundle 渲染。点击后调用原生 `pluginManager.installBundle`，spec 为该 Release 的 npm tarball URL。tarball 不在 profile 已保存依赖的 spec 列表中，因此不会命中 Host 对同名 registry spec 的 `already-installed` 检查；安装后依赖字符串变化，Host 才会识别为一次替换并重组。**不能先调用 `removeBundle`**：它会卸载正在显示按钮的插件自身，导致界面和后续调用中断。这里也刻意不使用 Git spec：Host 的 GitHub 连接预检固定五秒，慢网络下会把有效更新误判为失败；tarball 跳过该预检，且与发布资产使用同一份 `npm pack` 产物。
+
+返回 `applied` 时提示刷新浏览器；返回 `restart-required` 时提示重启 DSH。HMR 只能替换 Host 侧已加载文件，浏览器 Client 仍需要刷新。`installBundle` 只修改 profile 的 `package.json` / `pnpm-lock.yaml`，设置与历史不动。检查失败、限流、无稳定 Release、`incompatible-version` 等保留原版本并显示原因；没有静默自动安装。
+
+0.2.2 及更早版本没有更新入口，必须先手动安装 0.2.3；这是避免在没有可信版本元数据时改造旧客户端的引导点。
 
 ## 记录和校验
 

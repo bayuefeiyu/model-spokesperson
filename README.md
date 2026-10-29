@@ -2,9 +2,9 @@
 
 指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-当前原生 Host + Web Client bundle **0.2.2**，目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。安装包：`dist/dsh-plugins-model-spokesperson-0.2.2.tgz`。
+当前原生 Host + Web Client bundle **0.2.3**，目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。本地安装包：`dist/dsh-plugins-model-spokesperson-0.2.3.tgz`；最近公开 Release 仍为 0.2.2，0.2.3 的 GitHub Release 需发布后使用。
 
-GitHub 私有仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
+GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
 ## 使用行为
 
@@ -23,12 +23,12 @@ GitHub 私有仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 
 使用目标 DSH 安装自带的 CLI 安装到指定 profile（`dsh` 代表该 CLI；本机 shell 使用 RTK）：
 
-在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.2.2`。私有仓库需要安装环境已登录有权限的 GitHub 账号。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
+在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.2.2`（最近公开 Release；0.2.3 发布后可用 `#v0.2.3`）。公开仓库不需要 GitHub 登录。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
 
 ```powershell
 rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.2.2
 # 也可下载 Release 安装包后使用本地路径：
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.2.tgz
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.3.tgz
 ```
 
 如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。
@@ -58,7 +58,19 @@ rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-
 
 不自动重试。重复点击有前后端保护；A 正在工作时不能发起重试，新用户输入或取消会停止进行中的重试。刷新或重启后仍可手动重试保留了工作材料的 0.2.x 失败记录；原文已删除、重生成或材料缺失时会提示无法重试。旧版首次调用前失败若没有快照，只能从仍有效的原报告之前的历史恢复材料，不会混入后来的对话。0.1.x 润色记录不支持此入口。
 
-通过 GitHub URL 安装的旧版本，在同一 profile 的插件管理器卸载后重装 0.2.2；卸载保留 profile 配置。上游 registry/npm 更新入口不适用于 Git URL 来源。也可以手动在该 profile 的 `cordis.patch.yml` 加入或合并：
+### 插件详情页一键更新（0.2.3）
+
+从 0.2.3 起，打开 **插件 → @dsh-plugins/model-spokesperson** 时，标题栏会出现更新控件：
+
+- 自动读取公开仓库的最新稳定 Release；当前已是最新时显示“已是最新 vX”，仍可点击重新检查。
+- 有新版本时显示 **更新到 vX**；点击后通过 DSH 原生插件管理器安装该 Release 的 npm tarball，覆盖安装，不先卸载正在显示按钮的插件自身。使用 tarball 而不是 Git spec，避免 Host 固定的五秒 Git 连接预检把慢网络误判为失败。
+- 返回 `applied` 时提示 **刷新页面**；返回 `restart-required` 时提示重启 DSH。Host 的 HMR 能原地重组时不需要重启，但浏览器 Client 始终需要刷新才能加载新界面。
+- 更新只修改 profile 的 `package.json` 与 `pnpm-lock.yaml`，A/B 映射、表达偏好、自定义提示词和历史展示稿均保留。
+- 检查使用公开 GitHub API，只接受带 `dsh-plugins-model-spokesperson-X.Y.Z.tgz` 资产的稳定 Release；网络失败、限流、无稳定 Release 或不兼容版本会显示可读原因并保留原版本。不会静默自动安装。
+
+0.2.2 及更早版本没有这个入口，需要先手动安装 0.2.3 一次；此后发布的新版本可在插件页一键更新。
+
+通过 GitHub URL 安装的旧版本，在同一 profile 的插件管理器卸载后重装 0.2.3；卸载保留 profile 配置。0.2.3 起也可以直接在插件详情页一键更新后续版本。上游 registry/npm 更新入口不适用于 Git URL 来源。也可以手动在该 profile 的 `cordis.patch.yml` 加入或合并：
 
 ```yaml
 - id: model-spokesperson-host
@@ -110,6 +122,8 @@ rtk proxy npm run pack:plugin
 0.1.2 增加原生插件详情设置界面，配置通过宿主 ConfigForm 和 volatile Config 引用保存并生效。类型检查和 26 项测试通过；浏览器验证未保存不落盘、保存后下一条回复使用新配置、界面关闭 B、刷新及进程重启后保留配置。关闭后仍同步此前展示稿，保持历史讨论可理解。见 [设置界面验收](evidence/settings-validation.md)。
 
 0.2.0 将成稿润色改为“独立起草 → 参考 A 报告核对自己的稿件”，设置支持核对轮数及用户控制预算。旧版历史展示稿继续回放，不补跑新流程。新稿允许重排信息，不再按 A 成稿的数字/代码出现次数和顺序作机械等同校验；事实核对依靠模型指令与证据，不能证明内容必然正确。
+
+0.2.3 在插件详情页增加公开仓库版本检查和一键更新；客户端读取 GitHub 稳定 Release 及其 tarball 资产，安装时覆盖安装，不调用 `removeBundle`。类型检查、56 项测试、构建和隔离 Web 验收通过；没有静默自动安装，也不修改 DSH 安装包。0.2.2 及更早版本需要首次手动安装 0.2.3。验收见 [更新验收](evidence/update-validation.md)。
 
 工作上下文来自当时有效的会话消息；若宿主已压缩历史，只能提供保留下来的材料。A 本次调用中新产生且未写入先前记录的结论，第一步 B 无法获知，第二步只能把 A 报告作为参考核查。附件本身不直接读取，B 只获得不可见标记和 A 已实际读取的记录。
 

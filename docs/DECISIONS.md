@@ -49,3 +49,9 @@ draftPrompt/reviewPrompt 各自保存完整提示词，包含此前共用的 COM
 采用共享严格 Typert 描述符及原生 Remote，资源明确为当前 Session。客户端只传失败记录身份和版本，Host 验证有效原文后在 runMaintenance 中运行 B。这样不会将手动重试伪装成新的用户任务，也不会重跑 A/工具，普通新输入仍能取消 B。
 
 选择复用连续成功阶段，要求当前 B 路由、完整 system 和输入完全一致。stages 为调用审计，activeStages 为当前逻辑步骤，两者分离以保留失败调用用量并支持重启恢复。重试用当前设置，已有成功稿只有一致时才复用。已有失败材料优先复用保存快照，旧首次调用前失败仅从仍有效的原报告之前的历史恢复。没有材料时明确拒绝。
+
+## D012 公开仓库的一键更新（2026-10-28，用户要求公开后）
+
+仓库公开后，更新检查放在 Client：直接读取 GitHub releases，不增加 Host HTTP 路由或 token 配置，也不维护第二份版本状态。只接受带 tgz 资产的稳定 Release，按 semver 排序；使用 releases 列表而不是 releases/latest，因为现有 v0.2.x Release 都是 prerelease。
+
+更新控件使用官方 `plugins.detail.actions` 列表槽，仅对本 bundle 渲染；安装调用原生 `pluginManager.installBundle` 并传入该 Release 的 npm tarball URL，不调用 `removeBundle`。tarball spec 使依赖字符串变化，覆盖安装后由 Host 判定 HMR 或 restart-required；这避免卸载正在显示控件的自身。选择 tarball 而非 Git spec，是因为 Host 的 GitHub 连接预检固定五秒，慢网络下会错误阻断有效安装；tarball 与发布资产共用同一份 `npm pack` 产物。Client 仍需刷新才能加载新 UI。默认只做用户确认后的一键更新，不做静默自动安装；旧版本需要首次手动安装 0.2.3。
