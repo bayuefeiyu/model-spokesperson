@@ -7,7 +7,8 @@ import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types
 import { SettingsView } from '../src/settings-view.tsx';
 import { SettingsSchema, type Settings } from '../src/contract.ts';
 import { Config, readSettings } from '../src/config.ts';
-import { DRAFT_SYSTEM, REVIEW_SYSTEM } from '../src/prompt.ts';
+import { DRAFT_SYSTEM, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from '../src/prompt.ts';
+import type { WorkspaceListModel } from '../src/workspace-client.ts';
 
 const rule = { source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } };
 const catalog: ModelCatalog = { default: rule.source, routableProviders: ['mock'], failures: [], groups: [{ id: 'mock', name: 'Mock', models: [{id:'a',name:'工作 A'},{id:'b',name:'编辑 B'}] }] };
@@ -39,11 +40,14 @@ test('native Config refs preserve cross-field validation and serialize editable 
   const good = await Config['~standard'].validate({enabled:true,rules:[rule]});
   assert.ok(!good.issues);
   assert.equal(readSettings(good.value as Parameters<typeof readSettings>[0]).enabled,true);
-  for (const candidate of [{enabled:true,rules:[]},{enabled:true,rules:[rule,rule]},{draftPrompt:' \n '},{reviewPrompt:''}]) {
+  for (const candidate of [{enabled:true,rules:[]},{enabled:true,rules:[rule,rule]},{draftPrompt:' \n '},{reviewPrompt:''},{translationTarget:' '},{translationPrompt:'  '},{translationWorkspaces:['a','a']}]) {
     const bad=await Config['~standard'].validate(candidate);
     assert.ok(bad.issues?.length);
   }
   assert.equal(Config.dict!.rules.meta.volatile,true);
+  assert.equal(Config.dict!.translationWorkspaces.meta.volatile,true);
+  const translated = await Config['~standard'].validate({ enabled:true, rules:[rule], translationWorkspaces:['ws-1'], translationTarget:'日文', translationPrompt:'自定义翻译' });
+  assert.ok(!translated.issues);
 });
 
 test('UI stages A/B choices and saves all changed fields atomically with its original revision', async () => {
@@ -107,6 +111,46 @@ test('UI saves review rounds and large or unlimited budgets without the old caps
   assert.equal(button(view!.root, '保存设置').props.disabled, false);
   await act(async () => { view!.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
   assert.deepEqual(f.form.getSnapshot().value, SettingsSchema.parse({ enabled: true, rules: [rule], reviewRounds: 3, maxInputChars: 0, maxOutputTokens: 100000 }));
+  view!.unmount();
+});
+
+function workspaceList(items = [
+  { workspaceId: 'ws-1', path: 'G:\\work\\one', title: '项目一' },
+  { workspaceId: 'ws-2', path: 'G:\\work\\two', title: '项目二' },
+]): WorkspaceListModel {
+  let snapshot = { items, state: 'idle', phase: 'ready' };
+  const listeners = new Set<() => void>();
+  return {
+    getSnapshot: () => snapshot,
+    subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+  };
+}
+
+test('translation mode is configured per project and hides legacy prompt fields', async () => {
+  const f = fixture({ enabled: true, rules: [rule] });
+  const workspaces = workspaceList();
+  let view: ReturnType<typeof create>;
+  await act(async () => { view = create(<SettingsView form={f.form} loadCatalog={async () => catalog} workspaces={workspaces} />); });
+  assert.equal(view!.root.findByProps({ 'aria-label': '项目' }).props.value, 'ws-1');
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '翻译目标语言' }).length, 0);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 1);
+  act(() => view!.root.findByProps({ 'aria-label': '本项目使用英文底稿和中文翻译' }).props.onChange({ target: { checked: true } }));
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 0);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '核对轮数' }).length, 0);
+  assert.equal(view!.root.findByProps({ 'aria-label': '翻译目标语言' }).props.value, '中文');
+  assert.equal(view!.root.findByProps({ 'aria-label': '翻译提示词' }).props.value, TRANSLATE_SYSTEM);
+  act(() => view!.root.findByProps({ 'aria-label': '翻译目标语言' }).props.onChange({ target: { value: '日文' } }));
+  act(() => view!.root.findByProps({ 'aria-label': '翻译提示词' }).props.onChange({ target: { value: '自定义翻译要求' } }));
+  assert.equal(f.calls.length, 0);
+  await act(async () => { view!.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
+  assert.deepEqual(f.calls[0].ops, [
+    { op: 'set', path: ['translationWorkspaces'], value: ['ws-1'] },
+    { op: 'set', path: ['translationTarget'], value: '日文' },
+    { op: 'set', path: ['translationPrompt'], value: '自定义翻译要求' },
+  ]);
+  act(() => view!.root.findByProps({ 'aria-label': '项目' }).props.onChange({ target: { value: 'ws-2' } }));
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 1);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '翻译目标语言' }).length, 0);
   view!.unmount();
 });
 

@@ -6,9 +6,12 @@
       "writer": { "provider": "YOUR_B_PROVIDER", "model": "YOUR_B_MODEL" }
     }
   ],
-  "style": "中文，结论先行，少术语，忠实于原文。",
-  "timeoutMs": 45000,
+  "style": "中文，结论先行，少术语，清楚自然，事实准确。",
+  "reviewRounds": 1,
+  "translationWorkspaces": [],
+  "translationTarget": "中文",
+  "timeoutMs": 0,
   "maxConcurrentRewrites": 2,
-  "maxInputChars": 30000,
-  "maxOutputTokens": 8192
+  "maxInputChars": 0,
+  "maxOutputTokens": 0
 }

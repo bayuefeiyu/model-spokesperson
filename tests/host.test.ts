@@ -7,6 +7,7 @@ import { LlmAdapter, createUserMessage, ToolCallId, isAgentLoopRequest, type Gen
 import { SessionId, appendPluginRecord } from '@deepseek-ai/dsh-session';
 import * as Host from '../src/host.ts';
 import { PROJECTION, RECORD, type RetryRequest, type Settings, type Rewrite } from '../src/contract.ts';
+import { ENGLISH_REPLY_RULE, TRANSLATION_MARKER, TRANSLATE_SYSTEM } from '../src/prompt.ts';
 
 async function* text(value: string): AsyncIterable<StreamChunk> {
   yield { type: 'text-delta', index: 0, text: value };
@@ -19,15 +20,20 @@ class MockAdapter extends LlmAdapter {
   constructor(private readonly generate: Generate) { super(); }
   async *stream(options: GenerateOptions) { this.calls.push(options); yield* this.generate(options); }
 }
-export async function fixture(generate: Generate, overrides: Partial<Settings> = {}) {
+export async function fixture(generate: Generate, overrides: Partial<Settings> = {}, project?: { cwd: string; workspaceId: string }) {
   const ctx = new Context();
   await mountAgentLoopTestDependencies(ctx);
   provideWorkingDirectoryFixture(ctx, process.cwd() + '/.dev/workspace');
+  if (project) {
+    (ctx as unknown as { provide(name: string, value: unknown): () => void }).provide('workspaceRegistry', {
+      resolveByPath: async (path: string) => path === project.cwd ? { id: project.workspaceId } : undefined,
+    });
+  }
   const adapter = new MockAdapter(generate);
   ctx.llm.registerAdapter(['mock', 'other'], adapter);
   const fiber = await ctx.plugin(Host, { enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }], ...overrides });
   const harness = await mountAgentLoopTestHarness(ctx);
-  const agent = await harness.create(SessionId('test-' + crypto.randomUUID()), { provider: 'mock', model: 'a' });
+  const agent = await harness.create(SessionId('test-' + crypto.randomUUID()), { provider: 'mock', model: 'a' }, project ? { cwd: project.cwd } : undefined);
   const prompt = async (question = '请解释结果') => {
     agent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: question }] }));
     await agent.whenIdle();
@@ -282,6 +288,7 @@ test('turning future rewrites off still synchronizes already displayed history',
 });
 
 const inputOf = (options: GenerateOptions) => JSON.parse((options.messages[0].content[0] as { text: string }).text);
+const systemOf = (options: GenerateOptions) => options.system ?? options.messages.filter(message => message.role === 'system').flatMap(message => message.content.flatMap(block => block.type === 'text' ? [block.text] : [])).join('\n');
 
 test('B drafts from pre-report evidence, then improves its own draft using A only as a reference', async () => {
   const sourceReport = 'A 的模板成稿：先写冗长背景。测试尚未验证。';
@@ -421,9 +428,26 @@ test('user input budget is checked per review without silently truncating either
     await f.prompt();
     const row = await f.waitRow(row => row.status === 'fallback');
     assert.equal(row.reason, 'input-limit');
+    assert.equal(row.inputBudget?.limit, 6_000);
+    assert.ok(row.inputBudget!.chars > 10_000);
+    assert.equal(row.phase, 'reviewing');
+    assert.equal(row.reviewRound, 1);
     assert.equal(row.stages?.length, 1, 'draft fits; review would exceed user budget');
     assert.equal(f.adapter.calls.filter(call => call.model === 'b').length, 1);
     assert.equal(row.originalText?.length, 10_000);
+    await f.agent.whenIdle();
+    const blocked = await f.ctx.modelSpokesperson.retry(retryRequest(row));
+    assert.equal(blocked.accepted, false);
+    if (!blocked.accepted) assert.ok(blocked.message.includes(row.inputBudget!.chars.toLocaleString('en-US')));
+    assert.equal(f.rows()[0].retryCount, 0);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'b').length, 1);
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }], maxInputChars: 0 });
+    await f.fiber.await();
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(row))).accepted, true);
+    const ready = await f.waitRow();
+    assert.equal(ready.inputBudget, undefined);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'b').length, 2, 'reuse draft after lifting the review budget');
+    assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 1);
   } finally { await f.ctx.fiber.dispose(); }
 });
 
@@ -467,6 +491,41 @@ test('custom stage prompts replace complete defaults and are recorded exactly wi
 });
 
 const retryRequest = (row: Rewrite, sessionId = row.sessionId): RetryRequest => ({ sessionId, turn: row.turn, step: row.step, originalMessageId: row.originalMessageId!, attemptId: row.attemptId, retryCount: row.retryCount ?? 0 });
+
+test('million-character input failure explains blocked retries; changing the budget recovers only B', async () => {
+  const f = await fixture(options => text(options.model === 'a' ? 'A 原报告' : 'B 独立报告'), { maxInputChars: 1_000_000 });
+  try {
+    await f.prompt('材'.repeat(540_000));
+    const failed = await f.waitRow(row => row.status === 'fallback');
+    await f.agent.whenIdle();
+    assert.equal(failed.reason, 'input-limit');
+    assert.equal(failed.stages, undefined, 'no B request was sent');
+    assert.ok(failed.inputBudget!.chars > 1_000_000);
+    // Also cover historical rows that predate the new budget metadata.
+    const legacy = { ...failed }; delete legacy.inputBudget;
+    appendPluginRecord(f.agent.session, RECORD, legacy);
+    for (let i = 0; i < 2; i++) {
+      const result = await f.ctx.modelSpokesperson.retry(retryRequest(legacy));
+      assert.equal(result.accepted, false);
+      if (!result.accepted) {
+        assert.ok(result.message.includes(failed.inputBudget!.chars.toLocaleString('en-US')));
+        assert.ok(result.message.includes('1,000,000'));
+        assert.ok(result.message.includes('0（不限）'));
+      }
+      assert.equal(f.rows()[0].retryCount, 0);
+      assert.equal(f.adapter.calls.length, 1);
+    }
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }], maxInputChars: 0 });
+    await f.fiber.await();
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(legacy))).accepted, true);
+    const ready = await f.waitRow();
+    assert.equal(ready.rewrittenText, 'B 独立报告');
+    assert.equal(ready.retryCount, 1);
+    assert.equal(ready.inputBudget, undefined);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 1);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'b').length, 2);
+  } finally { await f.ctx.fiber.dispose(); }
+});
 
 test('manual retry after draft failure calls only B and preserves the exact original work snapshot', async () => {
   let bCalls = 0;
@@ -625,6 +684,213 @@ test('a pre-0.2.2 review failure resumes from its stored first request after Hos
     assert.equal(calls[0].model, 'b');
     assert.equal(inputOf(calls[0]).ownDraft, 'B 正文');
     assert.equal(inputOf(calls[0]).userQuestion, '老版本的任务');
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('translation mode injects an English A rule and sends only the committed report to one B call', async () => {
+  const cwd = process.cwd();
+  let bCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'a') return text('I added the “保存” button. Keyboard navigation still needs testing.');
+    bCalls += 1;
+    return text('已添加“保存”按钮。键盘导航还需要测试。');
+  }, { translationWorkspaces: ['ws-1'], translationTarget: '中文' }, { cwd, workspaceId: 'ws-1' });
+  try {
+    await f.prompt('请做一个中文设置页');
+    const row = await f.waitRow();
+    assert.equal(row.policyVersion, 3);
+    assert.equal(row.promptVersion, 3);
+    assert.equal(row.translationTarget, '中文');
+    assert.equal(row.originalText, 'I added the “保存” button. Keyboard navigation still needs testing.');
+    assert.equal(row.rewrittenText, '已添加“保存”按钮。键盘导航还需要测试。');
+    assert.equal(row.context, undefined);
+    assert.deepEqual(row.stages?.map(stage => stage.kind), ['translate']);
+    assert.equal(row.stages?.[0].input, row.originalText);
+    assert.equal(bCalls, 1);
+    const a = f.adapter.calls.find(call => call.model === 'a')!;
+    assert.ok(systemOf(a).includes(ENGLISH_REPLY_RULE));
+    assert.ok(systemOf(a).includes(TRANSLATION_MARKER));
+    const b = f.adapter.calls.find(call => call.model === 'b')!;
+    assert.deepEqual(b.tools, []);
+    assert.ok(b.system?.includes(TRANSLATE_SYSTEM));
+    assert.ok(b.system?.includes('目标语言：中文'));
+    assert.equal((b.messages[0].content[0] as { text: string }).text, row.originalText);
+    const wire = JSON.stringify(b.messages);
+    assert.ok(!wire.includes('userQuestion'));
+    assert.ok(!wire.includes('workContext'));
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('translation mode is per project; another workspace keeps the legacy draft/review path', async () => {
+  const cwd = process.cwd();
+  const f = await fixture(options => text(options.model === 'b' ? 'B 的旧方式草稿' : 'English report.'), { translationWorkspaces: ['other-ws'] }, { cwd, workspaceId: 'ws-2' });
+  try {
+    await f.prompt('请回复');
+    const row = await f.waitRow();
+    assert.equal(row.policyVersion, 2);
+    assert.equal(row.rewrittenText, 'B 的旧方式草稿');
+    const a = f.adapter.calls.find(call => call.model === 'a')!;
+    assert.ok(!systemOf(a).includes(TRANSLATION_MARKER));
+    const b = f.adapter.calls.find(call => call.model === 'b')!;
+    assert.equal(inputOf(b).userQuestion, '请回复');
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('tool-call steps bypass translation; the following text report is translated once', async () => {
+  const cwd = process.cwd();
+  let aCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'b') return text('检查已经结束。');
+    if (++aCalls > 1) return text('The inspection is complete.');
+    return (async function* (): AsyncIterable<StreamChunk> {
+      yield { type: 'text-delta', index: 0, text: 'Starting inspection' };
+      yield { type: 'tool-call-delta', index: 1, id: ToolCallId('call-translate'), name: 'inspect', argumentsDelta: '{"path":"fixture.txt"}' };
+      yield { type: 'finish', reason: { kind: 'tool-calls' } };
+    })();
+  }, { translationWorkspaces: ['ws-1'] }, { cwd, workspaceId: 'ws-1' });
+  f.ctx.tools.register({ name: 'inspect', description: 'Read a mock file', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: String(value) }] },
+    execute: async () => 'unchanged-result' });
+  try {
+    await f.prompt();
+    await f.waitRow();
+    assert.equal(f.rows()[0].status, 'bypass');
+    assert.equal(f.rows()[1].status, 'ready');
+    assert.equal(f.adapter.calls.filter(call => call.model === 'b').length, 1);
+    const b = f.adapter.calls.find(call => call.model === 'b')!;
+    assert.equal((b.messages[0].content[0] as { text: string }).text, 'The inspection is complete.');
+    assert.ok(!JSON.stringify(b.messages).includes('unchanged-result'));
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('a complete system-prompt preset suppresses the A rule, so no translation is attempted', async () => {
+  const cwd = process.cwd();
+  let bCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'a') return text('English report.');
+    bCalls += 1;
+    return text('中文译文');
+  }, { translationWorkspaces: ['ws-1'] }, { cwd, workspaceId: 'ws-1' });
+  f.ctx.systemPrompt.section({ name: 'test:complete-prompt', order: 0, text: 'Complete prompt only.', complete: true });
+  try {
+    await f.prompt();
+    const row = await f.waitRow(candidate => candidate.status === 'bypass');
+    assert.equal(row.reason, 'translation-rule-missing');
+    assert.equal(bCalls, 0);
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('a late route change is recorded and skips translation instead of translating another model', async () => {
+  const cwd = process.cwd();
+  let bCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'b') { bCalls += 1; return text('中文译文'); }
+    return text('English report.');
+  }, { translationWorkspaces: ['ws-1'] }, { cwd, workspaceId: 'ws-1' });
+  f.ctx.on('agent/request', async (_payload, next) => ({ ...await next(), provider: 'mock', model: 'c' }), { global: true, prepend: true });
+  try {
+    await f.prompt();
+    const row = await f.waitRow(candidate => candidate.status === 'bypass');
+    assert.equal(row.reason, 'translation-route-changed');
+    assert.equal(bCalls, 0);
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('translation retry calls B once with current translation settings and no work context', async () => {
+  const cwd = process.cwd();
+  let bCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'a') return text('English report.');
+    bCalls += 1;
+    if (bCalls === 1) return (async function* () { throw new Error('temporary'); })();
+    return text('中文译文');
+  }, { translationWorkspaces: ['ws-1'] }, { cwd, workspaceId: 'ws-1' });
+  try {
+    await f.prompt();
+    const failed = await f.waitRow(candidate => candidate.status === 'fallback');
+    assert.equal(failed.policyVersion, 3);
+    assert.ok(['writer-incomplete', 'writer-or-storage-error'].includes(failed.reason ?? ''));
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }], translationWorkspaces: ['ws-1'], translationPrompt: '新的翻译要求', translationTarget: '日文' });
+    await f.fiber.await();
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(failed))).accepted, true);
+    const ready = await f.waitRow(candidate => candidate.status === 'ready' && (candidate.retryCount ?? 0) === 1);
+    assert.equal(ready.rewrittenText, '中文译文');
+    assert.equal(ready.translationTarget, '日文');
+    assert.equal(bCalls, 2);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 1);
+    assert.deepEqual(ready.activeStages, [1]);
+    assert.equal(ready.stages?.length, 2);
+    assert.equal(ready.context, undefined);
+    const lastB = f.adapter.calls.filter(call => call.model === 'b').at(-1)!;
+    assert.ok(lastB.system?.startsWith('新的翻译要求'));
+    assert.ok(lastB.system?.includes('目标语言：日文'));
+    assert.equal((lastB.messages[0].content[0] as { text: string }).text, 'English report.');
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('translation input budget is checked before B and retry can recover after raising it', async () => {
+  const cwd = process.cwd();
+  let bCalls = 0;
+  const f = await fixture(options => {
+    if (options.model === 'a') return text('English report with enough text to exceed a tiny translation budget.');
+    bCalls += 1;
+    return text('中文译文');
+  }, { translationWorkspaces: ['ws-1'], maxInputChars: 20 }, { cwd, workspaceId: 'ws-1' });
+  try {
+    await f.prompt();
+    const failed = await f.waitRow(candidate => candidate.status === 'fallback');
+    assert.equal(failed.reason, 'input-limit');
+    assert.equal(bCalls, 0);
+    assert.ok((failed.inputBudget?.chars ?? 0) > 20);
+    const blocked = await f.ctx.modelSpokesperson.retry(retryRequest(failed));
+    assert.equal(blocked.accepted, false);
+    if (!blocked.accepted) assert.ok(blocked.message.includes('超过设置上限'));
+    assert.equal(f.rows()[0].retryCount, 0);
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }], translationWorkspaces: ['ws-1'], maxInputChars: 0 });
+    await f.fiber.await();
+    assert.equal((await f.ctx.modelSpokesperson.retry(retryRequest(failed))).accepted, true);
+    const ready = await f.waitRow(candidate => candidate.status === 'ready');
+    assert.equal(ready.rewrittenText, '中文译文');
+    assert.equal(bCalls, 1);
+    assert.equal(f.adapter.calls.filter(call => call.model === 'a').length, 1);
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('translation records recover only a completed staged translation', async () => {
+  const cwd = process.cwd();
+  const f = await fixture(options => text(options.model === 'b' ? '中文译文' : 'English report.'), { translationWorkspaces: ['ws-1'] }, { cwd, workspaceId: 'ws-1' });
+  try {
+    await f.prompt();
+    const saved = await f.waitRow();
+    appendPluginRecord(f.agent.session, RECORD, { ...saved, status: 'rewriting' });
+    const count = f.adapter.calls.length;
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }], translationWorkspaces: ['ws-1'] });
+    await f.fiber.await();
+    assert.equal(f.rows()[0].status, 'ready');
+    assert.equal(f.adapter.calls.length, count);
+    const incomplete = { ...saved, status: 'rewriting' } as Rewrite;
+    delete incomplete.rewrittenText;
+    incomplete.stages = (saved.stages ?? []).map(stage => { const copy = { ...stage }; delete copy.output; delete copy.finishedAt; return copy; });
+    appendPluginRecord(f.agent.session, RECORD, incomplete);
+    f.fiber.update({ enabled: true, rules: [{ source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } }], translationWorkspaces: ['ws-1'] });
+    await f.fiber.await();
+    assert.equal(f.rows()[0].status, 'fallback');
+    assert.equal(f.rows()[0].reason, 'interrupted-rewrite');
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('translation never sends a long work history to B', async () => {
+  const cwd = process.cwd();
+  const sentinel = 'UNIQUE-WORK-HISTORY-SENTINEL-7f3a';
+  const f = await fixture(options => text(options.model === 'b' ? '第一句。第二句。' : 'First sentence. Second sentence.'), { translationWorkspaces: ['ws-1'] }, { cwd, workspaceId: 'ws-1' });
+  try {
+    await f.prompt('材'.repeat(540_000) + sentinel);
+    const row = await f.waitRow();
+    assert.equal(row.context, undefined);
+    const b = f.adapter.calls.find(call => call.model === 'b')!;
+    assert.equal((b.messages[0].content[0] as { text: string }).text, 'First sentence. Second sentence.');
+    assert.ok(!JSON.stringify(b.messages).includes(sentinel));
+    assert.ok(JSON.stringify(b.messages).length < 2_000);
   } finally { await f.ctx.fiber.dispose(); }
 });
 

@@ -5,9 +5,11 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client';
 import { createElement } from 'react';
 import { SETTINGS_NS, type Settings } from './contract.ts';
 import { SettingsView } from './settings-view.tsx';
+import { workspaceListOf } from './workspace-client.ts';
 
 export function mountSettings(ctx: Context) {
   const form = ctx.configForms.get<Settings>(SETTINGS_NS);
+  const workspaces = workspaceListOf(ctx);
   const loadCatalog = async () => {
     const result = await ctx.remote.session.modelCatalog();
     if (!result.ok) throw new Error('模型列表暂不可用');
@@ -15,5 +17,5 @@ export function mountSettings(ctx: Context) {
   };
   ctx.effect(() => ctx.configForms.whileServed([SETTINGS_NS], () => ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
     name: 'plugins.bundle.config', key: '@dsh-plugins/model-spokesperson',
-  }, () => createElement(SettingsView, { form, loadCatalog })))));
+  }, () => createElement(SettingsView, { form, loadCatalog, workspaces })))));
 }

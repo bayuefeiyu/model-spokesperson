@@ -35,6 +35,20 @@ test('live and durable handoff never flash original while collecting/rewriting',
   assert.equal(render.root.findAllByType('article')[0].children[0].children[0], '清楚说明');
   render.unmount();
 });
+test('translation rows show translating progress, a translated ready label and retry on failure', () => {
+  const View = createAssistantView(Default, async () => ({ accepted: true }));
+  const translating: Rewrite = { ...row, policyVersion: 3, promptVersion: 3, status: 'rewriting', phase: 'translating', translationTarget: '中文', rewrittenText: undefined };
+  const render = create(<View {...props(translating)} />);
+  assert.equal(render.root.findByProps({ role: 'status' }).children[0], 'B 正在翻译…');
+  act(() => render.update(<View {...props({ ...translating, status: 'ready', rewrittenText: '中文译文' })} />));
+  assert.equal(render.root.findAllByType('article')[0].children[0].children[0], '中文译文');
+  assert.ok(JSON.stringify(render.toJSON()).includes('B 已翻译为中文'));
+  act(() => render.update(<View {...props({ ...translating, status: 'fallback', reason: 'empty-output' })} />));
+  assert.ok(JSON.stringify(render.toJSON()).includes('B 翻译未完成，已显示 A 原文。'));
+  assert.ok(JSON.stringify(render.toJSON()).includes('B 未返回有效译文'));
+  assert.ok(render.root.findAllByType('button').some(node => node.children.join('') === '重试 B 回复'));
+  render.unmount();
+});
 test('history without record, tools, interruption, stale message and changed source fall through', () => {
   assert.equal(presentation(undefined, props(undefined)), 'original');
   const p = props(row);
@@ -72,5 +86,22 @@ test('retry button uses viewed session identity, blocks duplicate clicks and dis
   assert.equal(render.root.findByType('button').props.disabled, false);
   act(() => render.update(<View {...props(failed, { sessionId: 'viewed-fork', useAccess: () => false })} />));
   assert.equal(render.root.findByType('button').props.disabled, true);
+  render.unmount();
+});
+
+test('input-limit failures show the measured budget, settings remedy and a useful hint for old history', () => {
+  const View = createAssistantView(Default, async () => ({ accepted: true }));
+  const failed: Rewrite = { ...row, policyVersion: 2, promptVersion: 2, status: 'fallback', reason: 'input-limit', inputBudget: { chars: 1_069_712, limit: 1_000_000 } };
+  const render = create(<View {...props(failed)} />);
+  const output = JSON.stringify(render.toJSON());
+  assert.ok(output.includes('1,069,712'));
+  assert.ok(output.includes('1,000,000'));
+  assert.ok(output.includes('0（不限）'));
+  assert.ok(output.includes('token 上下文窗口不同'));
+  assert.ok(output.includes('复杂原文'));
+  act(() => render.update(<View {...props({ ...failed, inputBudget: undefined })} />));
+  assert.ok(JSON.stringify(render.toJSON()).includes('超过插件设置的字符上限'));
+  act(() => render.update(<View {...props({ ...failed, reason: 'private endpoint secret', inputBudget: undefined })} />));
+  assert.ok(!JSON.stringify(render.toJSON()).includes('private endpoint secret'));
   render.unmount();
 });

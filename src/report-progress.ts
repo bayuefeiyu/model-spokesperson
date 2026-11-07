@@ -22,6 +22,13 @@ export function completedPrefix(row: Rewrite, settings: Settings, context: WorkC
   return indices;
 }
 
+export function hasCompletedTranslation(row: Rewrite): boolean {
+  if (row.policyVersion !== 3 || !row.rewrittenText || validateReport(row.rewrittenText)) return false;
+  const stages = row.stages ?? [];
+  const index = stages.findLastIndex(stage => stage.kind === 'translate' && stage.round === 0 && stage.finishedAt !== undefined && !!stage.output);
+  return index >= 0 && stages[index].output === row.rewrittenText;
+}
+
 export function hasCompletedFinal(row: Rewrite): boolean {
   if (!row.rewrittenText || validateReport(row.rewrittenText)) return false;
   const stages = row.stages ?? [];

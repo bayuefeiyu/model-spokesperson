@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type {} from '@deepseek-ai/dsh-session-projection/types';
-import { DRAFT_SYSTEM, REVIEW_SYSTEM } from './prompt.ts';
+import { DRAFT_SYSTEM, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from './prompt.ts';
 
 export const RECORD = 'plugin:model-spokesperson/rewrite' as const;
 export const PROJECTION = 'modelSpokesperson' as const;
@@ -14,6 +14,9 @@ export const SettingsSchema = z.object({
   style: z.string().max(4000).default('中文，结论先行，少术语，清楚自然，事实准确。'),
   draftPrompt: z.string().refine(value => value.trim().length > 0, '独立起草提示词不能为空。').default(DRAFT_SYSTEM),
   reviewPrompt: z.string().refine(value => value.trim().length > 0, '核对完善提示词不能为空。').default(REVIEW_SYSTEM),
+  translationWorkspaces: z.array(z.string().min(1)).default([]),
+  translationTarget: z.string().trim().min(1).max(100).default('中文'),
+  translationPrompt: z.string().refine(value => value.trim().length > 0, '翻译提示词不能为空。').default(TRANSLATE_SYSTEM),
   reviewRounds: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(1),
   timeoutMs: z.number().int().min(0).max(2147483647).default(0),
   maxConcurrentRewrites: z.number().int().min(1).max(16).default(2),
@@ -27,6 +30,11 @@ export const SettingsSchema = z.object({
     seen.add(key);
   });
   if (config.enabled && config.rules.length === 0) ctx.addIssue({ code: 'custom', path: ['rules'], message: '启用时至少配置一个来源模型' });
+  const workspaces = new Set<string>();
+  config.translationWorkspaces.forEach((workspace, index) => {
+    if (workspaces.has(workspace)) ctx.addIssue({ code: 'custom', path: ['translationWorkspaces', index], message: '同一项目只能启用一次翻译方式' });
+    workspaces.add(workspace);
+  });
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -40,23 +48,25 @@ export const RetryResponseSchema = z.union([z.object({ accepted: z.literal(true)
 export type RetryResponse = z.infer<typeof RetryResponseSchema>;
 
 export const ReportStageSchema = z.object({
-  kind: z.enum(['draft', 'review']), round: z.number().int().min(0),
+  kind: z.enum(['draft', 'review', 'translate']), round: z.number().int().min(0),
   system: z.string(), input: z.string(), startedAt: z.number(),
   output: z.string().optional(), usage: z.unknown().optional(), finishedAt: z.number().optional(),
   writer: RouteSchema.optional(),
 });
 export type ReportStage = z.infer<typeof ReportStageSchema>;
 export const RewriteSchema = z.object({
-  schemaVersion: z.literal(1), policyVersion: z.union([z.literal(1), z.literal(2)]), promptVersion: z.union([z.literal(1), z.literal(2)]),
+  schemaVersion: z.literal(1), policyVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]), promptVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   sessionId: z.string(), turn: z.number().int(), step: z.number().int(), attemptId: z.string(),
   source: RouteSchema, writer: RouteSchema,
   status: z.enum(['collecting', 'rewriting', 'ready', 'bypass', 'fallback', 'cancelled']),
   originalMessageId: z.string().optional(), sourceHash: z.string().optional(), originalText: z.string().optional(),
   rewrittenText: z.string().optional(), reason: z.string().optional(),
+  inputBudget: z.object({ chars: z.number().int().min(0), limit: z.number().int().min(0) }).optional(),
   startedAt: z.number(), finishedAt: z.number().optional(),
   usage: z.unknown().optional(),
   request: z.object({ system: z.string(), input: z.string() }).optional(),
-  phase: z.enum(['drafting', 'reviewing']).optional(),
+  translationTarget: z.string().min(1).optional(),
+  phase: z.enum(['drafting', 'reviewing', 'translating']).optional(),
   reviewRound: z.number().int().min(0).optional(), reviewRounds: z.number().int().min(0).optional(),
   stages: z.array(ReportStageSchema).optional(),
   context: WorkContextSchema.optional(), retryCount: z.number().int().min(0).optional(),

@@ -1,6 +1,6 @@
 # 实现设计
 
-当前 0.2.3，目标 DSH 0.2.1-rc.3。独立报告流程验收见 `evidence/report-validation.md`，提示词设置见 `evidence/prompt-validation.md`，重试见 `evidence/retry-validation.md`，一键更新见 `evidence/update-validation.md`；其他旧版本证据按其版本保留。
+当前本地开发版本 0.3.0，目标 DSH 0.2.1-rc.3。独立报告流程验收见 `evidence/report-validation.md`，提示词设置见 `evidence/prompt-validation.md`，重试见 `evidence/retry-validation.md`，输入超限反馈见 `evidence/input-limit-validation.md`，一键更新见 `evidence/update-validation.md`，按项目翻译见 `evidence/translation-validation.md`；其他旧版本证据按其版本保留。
 
 ```text
 用户 → A 的正常 AgentLoop → 原始助手消息/工具事件 → 原会话日志
@@ -28,6 +28,14 @@ B 第一请求只有 userQuestion/workContext，没有 A 本次报告。第一�
 
 0.2.1 将完整起草和核对指令开放为 draftPrompt/reviewPrompt，缺失字段回填内置默认全文。配置为 volatile，单次 attempt 设置快照固定全部核对阶段的文本，保存只改变后续回复。用户提示词完整替换对应阶段默认内容，末尾只加 style；字段不作模板插值。原生编辑器预填实际文本、拒绝空白、逐项恢复默认，恢复仍按普通草稿原子保存。promptVersion 2 继续表示数据协议，实际提示词由各 stage.system 记录。
 
+## 英文底稿 + 单次翻译（0.3.0）
+
+工作方式按项目选择，保存的是 DSH workspace id（`translationWorkspaces`）。Host 在 `system-prompt/assemble` 的 `{ global: true, prepend: true }` 外层监听器中先 `await next()`，用最终 `variables.provider/model` 与精确 A 映射匹配，再用 `workspaceRegistry.resolveByPath(session.header.cwd)` 校验项目。匹配时在 sections 末尾追加插件专属 section `model-spokesperson:english-reply`，保留其他 sections/tools/contexts/variables，并去掉自身旧 section。该 section 为 `interpolate: false`，不依赖用户变量。
+
+`agent/request` 在 `next()` 得到最终调用配置后记录本 turn/step 的翻译开关与路由；因此其他插件在后续阶段改路由时，`assistant-stream start` 能对照实际 `requestHeader().config` 跳过翻译并记录 `translation-route-changed`。翻译 attempt 在创建时即走单独分支：不调用 `deriveMessages()` 或 `captureWorkContext()`，不保存 `context`。A 正常结束、无工具、非空且非纯代码/JSON 后，Host 读取当前生效的 `system/message` surface 节点，确认英文规则标记仍存在；若被 `complete: true` 预设覆盖，记录 `translation-rule-missing` 并回退 A 原文，不调用 B。
+
+翻译调用使用 B 路由的 `ctx.llm.stream`，`tools: []`，system 为翻译提示词 + 目标语言 + 表达偏好，user 消息只有 A 正文。成功保存一个 `kind: 'translate'` 阶段、原消息身份/原文/hash、目标语言和独立 usage；记录 `policyVersion/promptVersion: 3`，不按核对轮数计算。失败、超时、截断、空输出或输入超限沿用回退；手动重试使用当前翻译设置，只额外调用一次 B，不需要旧工作材料。恢复只接受完整成功翻译阶段；旧版 v1/v2 记录继续按原规则读取。
+
 ## 手动重试（0.2.2）
 
 失败行用原生 Remote 调用 modelSpokesperson/retry。retry-remote.ts 通过公开的 createTypertRemoteInfo 定义单一类型化协议，两个 face 共用严格 schema/描述符；Host 在 Typert 注册表登记本地贡献，Client 经 remote.$mount 挂载，沿用应用已有认证、会话资源授权及传输。没有自建 HTTP、websocket 或向 A 注入重试指令。服务注解明确资源为请求的 sessionId。
@@ -37,6 +45,8 @@ B 第一请求只有 userQuestion/workContext，没有 A 本次报告。第一�
 重试捕获当前设置，使用旧工作快照。completedPrefix 只复用与当前模型、完整提示词及输入精确一致的连续成功阶段；修改核对指令只使后续核对重新运行，修改 B 或起草指令会重新起草。所有旧失败和新调用保存在 stages 中，writer 逐步记录，usage 对全部实际调用求和；activeStages 索引指明当前最终稿来自哪些成功步骤，避免复制复用稿时重复计算费用。旧无索引记录按线性阶段恢复。
 
 新记录在 A 成稿提交后即保存工作 context，覆盖首次调用前超限等失败。已有 0.2.x 记录可从第一次 B 输入恢复；若不存在，才使用当前有效历史中 A 原报告之前的前缀，不纳入后来的对话。找不到原报告或材料时拒绝，不猜造上下文。UI 采用 props.sessionId，避免分叉继承的 row.sessionId 把重试发到父会话。0.1.x 润色记录不提供入口。
+
+0.2.4 增加可选 inputBudget（chars/limit），在每步调用前超限时记录 system + JSON 的总字符数和用户限额，同时保存正确的起草/核对阶段。Client 仅将已知安全 reason 映射为可操作提示，不展示 provider 原始错误。手动重试在阶段复用计算后，先检查下一未复用请求是否仍超当前用户限额；拒绝时通过原 RPC 返回明确提示，不取得 maintenance、不改历史、不增加 retryCount。旧无 inputBudget 记录仍能显示超限原因，点击时重新计算所需字符数。继续尊重用户显式设置；不截断材料或擅自清零限额。
 
 状态按 agent / session / turn / step / attempt 隔离。FIFO 队列限并发，超时包含排队。新输入、显式取消、agent 销毁或卸载取消挂起任务；不遵守取消的 provider 的迟到结果也不能提交。失败回退不重跑 A，错误 reason 不包含 provider 异常细节。
 

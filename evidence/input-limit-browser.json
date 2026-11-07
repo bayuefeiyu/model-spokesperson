@@ -1,0 +1,11 @@
+{
+  "version": "0.2.4",
+  "checks": [
+    "native chat shows measured characters, limit and settings remedy before any B call",
+    "blocked retry returns a visible admission error and makes no model call",
+    "saving limit 0 through native settings permits retry with only B draft/review calls",
+    "reload restores final B without extra calls"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}

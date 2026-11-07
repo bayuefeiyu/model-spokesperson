@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, type ComponentType, type CSSPropert
 import type { ChatNodeViewProps, AssistantBlock } from '@deepseek-ai/dsh-client-ui-chat/client';
 import type {} from '@deepseek-ai/dsh-client-ui-session/client';
 import { PROJECTION, stepKey, type RetryRequest, type RetryResponse, type Rewrite } from './contract.ts';
+import { failureMessage } from './failure.ts';
 
 export type AssistantProps = ChatNodeViewProps<'assistant-step'> & Record<string, unknown>;
 const hint: CSSProperties = { fontFamily: 'system-ui, sans-serif', fontSize: 12, color: 'var(--dsw-alias-label-secondary, #64748b)', marginTop: 8 };
@@ -37,7 +38,9 @@ export function createAssistantView(Default: ComponentType<AssistantProps>, retr
     const data = props.node.data;
     if (mode === 'pending') {
       const withoutText = { ...props.node, data: { ...data, blocks: data.blocks.filter(block => block.kind !== 'text') } };
-      const progress = row?.policyVersion === 2 ? row.status === 'collecting' ? '等待 A 完成回复…' : row.phase === 'reviewing' ? `B 正在核对完善（${row.reviewRound}/${row.reviewRounds}）…` : 'B 正在独立起草…' : '正在整理表达…';
+      const progress = row?.policyVersion === 3
+        ? row.status === 'collecting' ? '等待 A 完成回复…' : 'B 正在翻译…'
+        : row?.policyVersion === 2 ? row.status === 'collecting' ? '等待 A 完成回复…' : row.phase === 'reviewing' ? `B 正在核对完善（${row.reviewRound}/${row.reviewRounds}）…` : 'B 正在独立起草…' : '正在整理表达…';
       return <><Default {...props} node={withoutText} /><div role="status" aria-live="polite" style={hint}>{progress}</div></>;
     }
     if (mode === 'fallback') {
@@ -54,8 +57,9 @@ export function createAssistantView(Default: ComponentType<AssistantProps>, retr
         finally { retryLock.current = false; }
       }
       return <><Default {...props} /><div style={{ ...hint, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span role="status">{row?.policyVersion === 2 ? 'B 回复未完成，已显示 A 原文。' : '整理未完成，已显示原文。'}</span>
-        {retry && row?.policyVersion === 2 && row.originalMessageId && <button type="button" disabled={local?.busy || !mayRetry} onClick={() => void retryReport()} style={{ font: 'inherit', cursor: 'pointer' }}>{local?.busy ? '正在提交重试…' : '重试 B 回复'}</button>}
+        <span role="status">{row?.policyVersion === 3 ? 'B 翻译未完成，已显示 A 原文。' : row?.policyVersion === 2 ? 'B 回复未完成，已显示 A 原文。' : '整理未完成，已显示原文。'}</span>
+        {(row?.policyVersion === 2 || row?.policyVersion === 3) && <span>{failureMessage(row)}</span>}
+        {retry && (row?.policyVersion === 2 || row?.policyVersion === 3) && row.originalMessageId && <button type="button" disabled={local?.busy || !mayRetry} onClick={() => void retryReport()} style={{ font: 'inherit', cursor: 'pointer' }}>{local?.busy ? '正在提交重试…' : '重试 B 回复'}</button>}
         {local?.message && <span role="alert">{local.message}</span>}
       </div></>;
     }
@@ -68,7 +72,7 @@ export function createAssistantView(Default: ComponentType<AssistantProps>, retr
     });
     return <div data-model-spokesperson="ready">
       <Default {...props} node={{ ...props.node, data: { ...data, blocks } }} />
-      <div style={{ ...hint, display: 'flex', alignItems: 'center', gap: 10 }}><span>{row!.policyVersion === 2 ? `B 已独立作答${row!.reviewRounds ? ` · 已核对 ${row!.reviewRounds} 轮` : ''}` : '文字已整理'}</span>
+      <div style={{ ...hint, display: 'flex', alignItems: 'center', gap: 10 }}><span>{row!.policyVersion === 3 ? `B 已翻译为${row!.translationTarget ?? '目标语言'}` : row!.policyVersion === 2 ? `B 已独立作答${row!.reviewRounds ? ` · 已核对 ${row!.reviewRounds} 轮` : ''}` : '文字已整理'}</span>
         <button type="button" style={{ font: 'inherit', color: 'inherit', background: 'transparent', border: '1px solid var(--dsw-alias-border-l1, #cbd5e1)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}
           onClick={() => { try { void navigator.clipboard.writeText(row!.rewrittenText!).then(() => setCopyState('已复制'), () => setCopyState('复制失败')); } catch { setCopyState('复制失败'); } }}>{copyState}</button>
       </div>

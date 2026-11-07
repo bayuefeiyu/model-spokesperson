@@ -55,3 +55,9 @@ draftPrompt/reviewPrompt 各自保存完整提示词，包含此前共用的 COM
 仓库公开后，更新检查放在 Client：直接读取 GitHub releases，不增加 Host HTTP 路由或 token 配置，也不维护第二份版本状态。只接受带 tgz 资产的稳定 Release，按 semver 排序；使用 releases 列表而不是 releases/latest，因为现有 v0.2.x Release 都是 prerelease。
 
 更新控件使用官方 `plugins.detail.actions` 列表槽，仅对本 bundle 渲染；安装调用原生 `pluginManager.installBundle` 并传入该 Release 的 npm tarball URL，不调用 `removeBundle`。tarball spec 使依赖字符串变化，覆盖安装后由 Host 判定 HMR 或 restart-required；这避免卸载正在显示控件的自身。选择 tarball 而非 Git spec，是因为 Host 的 GitHub 连接预检固定五秒，慢网络下会错误阻断有效安装；tarball 与发布资产共用同一份 `npm pack` 产物。Client 仍需刷新才能加载新 UI。默认只做用户确认后的一键更新，不做静默自动安装；旧版本需要首次手动安装 0.2.3。
+
+## D013 按项目的英文底稿与单次翻译（2026-11-07，用户新增方案）
+
+工作方式按 DSH workspace id 保存在现有配置中，未列出的项目继续使用独立起草 + 核对。A 的英文规则通过 `system-prompt/assemble` 追加，不修改冻结请求；翻译 attempt 不采集工作材料，B 只收到 A 最终正文并调用一次。设置页在没有活动 workspace 时提供项目选择器，而不是把项目写进 `AGENTS.md` 或使用路径字符串。
+
+完整提示预设可以覆盖追加 section，因此 Host 在 A 结束后检查实际生效的 `system/message` 标记；缺失时跳过 B 并记录原因。`agent/request` 的最终路由与组装记录不一致时同样跳过，防止把其他模型误译。翻译记录使用 `policyVersion/promptVersion: 3` 和 `translate` 阶段，旧记录读取与手动重试保持兼容；真实模型遵循率和译文质量仍靠抽样验收，不由结构检查证明。

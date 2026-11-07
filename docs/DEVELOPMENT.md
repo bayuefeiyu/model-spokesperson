@@ -22,7 +22,7 @@ Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试�
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/inspect-runtime.py --installation "G:\ai\harness\dsh desktop" --output evidence/runtime-inspection.json
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/prepare-runtime.py
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --from-default-profile web --dump-config
-rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.2.3.tgz
+rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.0.tgz
 rtk proxy node scripts/prepare-demo.mjs
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --port 31947 --no-open
 ```
@@ -70,3 +70,7 @@ rtk proxy node scripts/browser-e2e.mjs LOCAL_URL
 0.2.3 的更新入口直接在 Client 读取公开 GitHub Releases，不使用 Host 路由。隔离验证使用 `scripts/browser-update.mjs LOCAL_URL 0.2.3 v0.2.2`：打开插件详情页，确认更新控件只出现在本 bundle，并用 fixture Release 验证“已是最新/可更新”状态；`scripts/browser-update-e2e.mjs LOCAL_URL` 用 0.2.1 测试候选点击更新到真实公开 v0.2.2 资产，检查版本、来源、表达偏好和核对轮数保留。fixture 只替代 GitHub 元数据请求，安装仍从公开 Release 下载；不操作日常 desktop profile。真实 API 限流时记录为网络限制，不伪造通过。
 
 rc.3 Client 模块表不公开 dsh-typert-protocol/remote-info；build 显式打包这个没有运行时导入的纯叶模块，SDK 服务、Cordis、React、Zod 继续 external，并携带 THIRD_PARTY_NOTICES.txt。Client 使用 remote.modelSpokesperson 时必须同时注入 remote 和该 namespace；只注入子 namespace 不能读取父服务。
+
+0.2.4 安装本地包后，用 `rtk proxy node scripts/browser-input-limit.mjs LOCAL_URL` 在隔离 profile 验证输入上限：原生设置保存 1000、请求材料超限且不调用 B、点击重试返回明确预算提示、保存为 0 后仅调用 B 起草/核对、刷新不重复调用。输出 evidence/input-limit-browser.json 和 input-limit.png。超限可能在 A 的 driver 最后清理前即时显示，脚本等 500ms 再点击；若 A 仍忙，Host 的等待提示是正常保护。
+
+0.3.0 的自动测试已覆盖项目开关、A 规则注入、翻译输入隔离、工具直通、完整提示预设、晚期路由、翻译重试、预算和恢复。安装 0.3.0 构建产物后，在隔离 profile 打开插件设置，选择项目并勾选翻译，验证保存后下一条 A 回复先写英文、B 只调用一次、原行显示译文；再关闭项目翻译，确认恢复独立起草 + 核对。刷新和重启不重复调用。真实模型抽样需单独记录模型、输入量、延迟、费用和失败例。

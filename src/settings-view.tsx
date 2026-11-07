@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExtern
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types';
 import { SettingsSchema, type Settings, type Route } from './contract.ts';
-import { DRAFT_SYSTEM, REVIEW_SYSTEM } from './prompt.ts';
+import { DRAFT_SYSTEM, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from './prompt.ts';
+import type { WorkspaceListModel, WorkspaceListSnapshot } from './workspace-client.ts';
 
-export interface SettingsViewProps { form: ConfigForm<Settings>; loadCatalog: () => Promise<ModelCatalog> }
+export interface SettingsViewProps { form: ConfigForm<Settings>; loadCatalog: () => Promise<ModelCatalog>; workspaces?: WorkspaceListModel }
+const EMPTY_WORKSPACES: WorkspaceListSnapshot = { items: [] };
 const keyOf = (route: Route) => route.provider && route.model ? JSON.stringify([route.provider, route.model]) : '';
 const fromKey = (key: string): Route => key ? { provider: JSON.parse(key)[0], model: JSON.parse(key)[1] } : { provider: '', model: '' };
 const text: CSSProperties = { fontFamily: 'system-ui, sans-serif', fontSize: 13, lineHeight: 1.6, color: 'var(--dsw-alias-label-primary, #1e293b)' };
@@ -17,15 +19,21 @@ export function settingsError(value: Settings): string | undefined {
   if (result.success) return;
   const issue = result.error.issues[0];
   if (issue.path[0] === 'rules') return value.rules.some(rule => !keyOf(rule.source) || !keyOf(rule.writer)) ? '请为每组映射选择完整的 A 和 B 模型。' : issue.message;
-  if (issue.path[0] === 'draftPrompt' || issue.path[0] === 'reviewPrompt') return issue.message;
+  if (issue.path[0] === 'draftPrompt' || issue.path[0] === 'reviewPrompt' || issue.path[0] === 'translationPrompt') return issue.message;
+  if (issue.path[0] === 'translationWorkspaces') return '同一项目只能启用一次翻译方式。';
+  if (issue.path[0] === 'translationTarget') return '目标语言不能为空。';
   return issue.path[0] === 'style' ? '表达偏好不能超过 4000 字。' : '请检查高级设置的数值范围。';
 }
 
 /** A staged native ConfigForm editor: only Save writes, with the original revision fence. */
-export function SettingsView({ form, loadCatalog }: SettingsViewProps) {
+export function SettingsView({ form, loadCatalog, workspaces }: SettingsViewProps) {
   const subscribe = useCallback((listener: () => void) => form.subscribe(listener), [form]);
   const getSnapshot = useCallback(() => form.getSnapshot(), [form]);
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
+  const workspaceSubscribe = useCallback((listener: () => void) => workspaces?.subscribe(listener) ?? (() => {}), [workspaces]);
+  const workspaceSnapshot = useCallback(() => workspaces?.getSnapshot() ?? EMPTY_WORKSPACES, [workspaces]);
+  const workspaceState = useSyncExternalStore(workspaceSubscribe, workspaceSnapshot, workspaceSnapshot);
+  const workspaceItems = workspaceState.items;
   const current = useMemo(() => SettingsSchema.parse(snapshot.value ?? {}), [snapshot.value]);
   const [draft, setDraft] = useState<{ settings: Settings; revision: number | undefined }>();
   const [saving, setSaving] = useState(false);
@@ -43,6 +51,12 @@ export function SettingsView({ form, loadCatalog }: SettingsViewProps) {
     return () => { active = false; };
   }, [loadCatalog, refresh]);
   const value = draft?.settings ?? current;
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>();
+  useEffect(() => {
+    setSelectedWorkspaceId(previous => previous && workspaceItems.some(item => item.workspaceId === previous) ? previous : workspaceItems[0]?.workspaceId);
+  }, [workspaceItems]);
+  const selectedWorkspace = workspaceItems.find(item => item.workspaceId === selectedWorkspaceId);
+  const translationOn = Boolean(selectedWorkspace && value.translationWorkspaces.includes(selectedWorkspace.workspaceId));
   const dirty = JSON.stringify(value) !== JSON.stringify(current);
   const conflict = dirty && draft?.revision !== snapshot.revision;
   const invalid = settingsError(value);
@@ -95,22 +109,45 @@ export function SettingsView({ form, loadCatalog }: SettingsViewProps) {
         <button type="button" style={{ ...button, marginTop: 12 }} onClick={() => edit(settings => ({ ...settings, rules: settings.rules.filter((_, i) => i !== index) }))}>删除第 {index + 1} 组映射</button>
       </fieldset>)}
       <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, rules: [...settings.rules, { source: { provider: '', model: '' }, writer: { provider: '', model: '' } }] }))}>添加模型映射</button></div>
-      <label style={{ display: 'grid', gap: 5 }}>表达偏好<textarea aria-label="表达偏好" rows={3} style={control} value={value.style} onChange={event => edit(settings => ({ ...settings, style: event.target.value }))} /></label>
-      <details><summary style={{ cursor: 'pointer' }}>提示词设置</summary><div style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-        <p style={note}>以下是发送给 B 的完整阶段提示词，可直接修改。每次调用还会在末尾附加上面的“表达偏好”。恢复默认只修改当前草稿，点击“保存设置”后生效。</p>
-        <label style={{ display: 'grid', gap: 5 }}>独立起草提示词<textarea aria-label="独立起草提示词" rows={12} spellCheck={false} style={{ ...control, resize: 'vertical' }} value={value.draftPrompt} onChange={event => edit(settings => ({ ...settings, draftPrompt: event.target.value }))} /></label>
-        <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, draftPrompt: DRAFT_SYSTEM }))}>恢复默认起草提示词</button></div>
-        <p style={note}>起草输入为 JSON：userQuestion 是用户本次要求，workContext 是 A 写本次报告前的工作材料；不包含 A 本次成稿。</p>
-        <label style={{ display: 'grid', gap: 5 }}>核对完善提示词<textarea aria-label="核对完善提示词" rows={14} spellCheck={false} style={{ ...control, resize: 'vertical' }} value={value.reviewPrompt} onChange={event => edit(settings => ({ ...settings, reviewPrompt: event.target.value }))} /></label>
-        <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, reviewPrompt: REVIEW_SYSTEM }))}>恢复默认核对提示词</button></div>
-        <p style={note}>核对输入还包含 ownDraft（B 自己的上一稿）、sourceReport（A 的参考报告）、reviewRound（当前核对轮次）。这些字段由插件提供，无需填写占位符。核对轮数为 0 时不使用核对提示词。</p>
-      </div></details>
-      <label style={{ display: 'grid', gap: 5 }}>核对轮数<input aria-label="核对轮数" type="number" min={0} step={1} style={control} value={value.reviewRounds} onChange={event => edit(settings => ({ ...settings, reviewRounds: Number(event.target.value) }))} /><span style={note}>先独立起草，再核对 {value.reviewRounds} 轮，共调用 B {value.reviewRounds + 1} 次。设为 0 时只独立起草，不向 B 提供 A 本次报告。每轮核对都在 B 自己的上一稿上完善。</span></label>
+      <label style={{ display: 'grid', gap: 5 }}>表达偏好<textarea aria-label="表达偏好" rows={3} style={control} value={value.style} onChange={event => edit(settings => ({ ...settings, style: event.target.value }))} /><span style={note}>翻译方式下作为译文文风。</span></label>
+      {workspaces && <fieldset style={{ border: '1px solid var(--dsw-alias-border-l1, #e2e8f0)', borderRadius: 10, padding: 14, margin: 0, minWidth: 0 }}>
+        <legend>工作方式（按项目）</legend>
+        {workspaceItems.length === 0 ? <p style={note}>{workspaceState.state === 'loading' ? '正在读取项目列表…' : workspaceState.state === 'error' ? '项目列表暂不可用；请刷新页面后重试。' : '尚未检测到项目。请先在 DSH 中打开或创建一个项目；此设置按项目保存，同一 profile 下不同项目互不影响。'}</p> : <div style={{ display: 'grid', gap: 10 }}>
+          <label style={{ display: 'grid', gap: 5 }}>项目<select aria-label="项目" style={control} value={selectedWorkspaceId ?? ''} onChange={event => setSelectedWorkspaceId(event.target.value)}>
+            {workspaceItems.map(item => <option key={item.workspaceId} value={item.workspaceId}>{item.title} · {item.path}</option>)}
+          </select></label>
+          {selectedWorkspace && <p style={note}>当前项目：{selectedWorkspace.title}（{selectedWorkspace.path}）</p>}
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" aria-label="本项目使用英文底稿和中文翻译" checked={translationOn} disabled={!selectedWorkspace} onChange={event => {
+            if (!selectedWorkspace) return;
+            const id = selectedWorkspace.workspaceId;
+            edit(settings => ({ ...settings, translationWorkspaces: event.target.checked ? [...new Set([...settings.translationWorkspaces, id])] : settings.translationWorkspaces.filter(value => value !== id) }));
+          }} />本项目使用英文底稿和中文翻译</label>
+          <p style={note}>勾选后，A 在本项目用英文写面向用户的报告、解释和问题；B 只收到 A 的这条回复，按文风翻译一次。未勾选的项目继续使用独立起草 + 核对；关闭勾选会恢复该项目的旧方式，已保存的旧提示词和核对轮数仍保留。</p>
+        </div>}
+      </fieldset>}
+      {translationOn ? <div style={{ display: 'grid', gap: 14 }}>
+        <p style={note}>翻译方式下 B 只读取 A 的这条回复，不读取工具结果、对话历史或文件内容；翻译请求只有一次，不执行核对轮次。</p>
+        <label style={{ display: 'grid', gap: 5 }}>目标语言<input aria-label="翻译目标语言" style={control} value={value.translationTarget} onChange={event => edit(settings => ({ ...settings, translationTarget: event.target.value }))} /></label>
+        <label style={{ display: 'grid', gap: 5 }}>翻译提示词<textarea aria-label="翻译提示词" rows={10} spellCheck={false} style={{ ...control, resize: 'vertical' }} value={value.translationPrompt} onChange={event => edit(settings => ({ ...settings, translationPrompt: event.target.value }))} /></label>
+        <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, translationPrompt: TRANSLATE_SYSTEM }))}>恢复默认翻译提示词</button></div>
+        <p style={note}>请求会在翻译提示词末尾追加“目标语言”和上方“表达偏好”。旧方式的独立起草提示词、核对提示词和核对轮数仍保留，关闭本项目翻译后恢复使用。</p>
+      </div> : <>
+        <details><summary style={{ cursor: 'pointer' }}>提示词设置</summary><div style={{ display: 'grid', gap: 14, marginTop: 12 }}>
+          <p style={note}>以下是发送给 B 的完整阶段提示词，可直接修改。每次调用还会在末尾附加上面的“表达偏好”。恢复默认只修改当前草稿，点击“保存设置”后生效。</p>
+          <label style={{ display: 'grid', gap: 5 }}>独立起草提示词<textarea aria-label="独立起草提示词" rows={12} spellCheck={false} style={{ ...control, resize: 'vertical' }} value={value.draftPrompt} onChange={event => edit(settings => ({ ...settings, draftPrompt: event.target.value }))} /></label>
+          <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, draftPrompt: DRAFT_SYSTEM }))}>恢复默认起草提示词</button></div>
+          <p style={note}>起草输入为 JSON：userQuestion 是用户本次要求，workContext 是 A 写本次报告前的工作材料；不包含 A 本次成稿。</p>
+          <label style={{ display: 'grid', gap: 5 }}>核对完善提示词<textarea aria-label="核对完善提示词" rows={14} spellCheck={false} style={{ ...control, resize: 'vertical' }} value={value.reviewPrompt} onChange={event => edit(settings => ({ ...settings, reviewPrompt: event.target.value }))} /></label>
+          <div><button type="button" style={button} onClick={() => edit(settings => ({ ...settings, reviewPrompt: REVIEW_SYSTEM }))}>恢复默认核对提示词</button></div>
+          <p style={note}>核对输入还包含 ownDraft（B 自己的上一稿）、sourceReport（A 的参考报告）、reviewRound（当前核对轮次）。这些字段由插件提供，无需填写占位符。核对轮数为 0 时不使用核对提示词。</p>
+        </div></details>
+        <label style={{ display: 'grid', gap: 5 }}>核对轮数<input aria-label="核对轮数" type="number" min={0} step={1} style={control} value={value.reviewRounds} onChange={event => edit(settings => ({ ...settings, reviewRounds: Number(event.target.value) }))} /><span style={note}>先独立起草，再核对 {value.reviewRounds} 轮，共调用 B {value.reviewRounds + 1} 次。设为 0 时只独立起草，不向 B 提供 A 本次报告。每轮核对都在 B 自己的上一稿上完善。</span></label>
+      </>}
       <details><summary style={{ cursor: 'pointer' }}>高级设置</summary><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginTop: 12 }}>
         {([{ key: 'timeoutMs', label: '完整流程超时（秒，0 不限）', scale: 1000, min: 0, max: 2147483.647 }, { key: 'maxConcurrentRewrites', label: '同时处理数量', scale: 1, min: 1, max: 16 }, { key: 'maxInputChars', label: '每次输入字符上限（0 不限）', scale: 1, min: 0, max: Number.MAX_SAFE_INTEGER }, { key: 'maxOutputTokens', label: '每次输出 tokens（0 跟随模型）', scale: 1, min: 0, max: Number.MAX_SAFE_INTEGER }] as const).map(field => <label key={field.key} style={{ display: 'grid', gap: 5 }}>{field.label}<input aria-label={field.label} type="number" step={field.key === 'timeoutMs' ? 'any' : 1} min={field.min} max={field.max} style={control} value={value[field.key] / field.scale} onChange={event => edit(settings => ({ ...settings, [field.key]: Number(event.target.value) * field.scale }))} /></label>)}
-      </div><p style={note}>插件默认不额外限制输入和等待时间，输出上限跟随 B 的模型配置；实际仍受模型及提供方限制。旧设置中的限额会保留，可改为 0。每次输入包含工作上下文，核对时还包含 B 的上一稿和 A 的报告；超过自设上限会回退，不会静默截断。</p></details>
+      </div><p style={note}>插件默认不额外限制输入和等待时间，输出上限跟随 B 的模型配置；实际仍受模型及提供方限制。旧设置中的限额会保留，可改为 0。输入上限按字符数计算，并非模型的 token 上下文窗口。旧方式的每次输入包含工作上下文，核对时还包含 B 的上一稿和 A 的报告；翻译方式只包含翻译提示词和 A 的这条回复。超过自设上限会回退，不会静默截断。</p></details>
     </fieldset>
-    <p style={note}>聊天时仍在输入框选择 A，这里不会自动切换会话模型。保存只影响后续回复，进行中的流程保留原设置。B 会增加调用费用和等待时间；核对失败会显示 A 原文。没有匹配到 A 的模型直接显示。</p>
+    <p style={note}>聊天时仍在输入框选择 A，这里不会自动切换会话模型。保存只影响后续回复，进行中的流程保留原设置。B 会增加调用费用和等待时间；核对或翻译失败会显示 A 原文。没有匹配到 A 的模型直接显示。</p>
     {invalid && dirty && <p role="alert" style={{ margin: 0, color: 'var(--dsw-alias-state-error-primary, #b91c1c)' }}>{invalid}</p>}
     {conflict && <p role="alert">设置已在其他页面或配置文件中改变。请先放弃当前修改，读取最新值后再保存。</p>}
     {error && <p role="alert">{error}</p>}

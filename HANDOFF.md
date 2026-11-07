@@ -1,6 +1,10 @@
 # 开发交接
 
-当前版本 0.2.3，针对 DSH 0.2.1-rc.3。安装包 dist/dsh-plugins-model-spokesperson-0.2.3.tgz；使用步骤见 README。独立报告流程见 evidence/report-validation.md，提示词设置见 evidence/prompt-validation.md，手动重试见 evidence/retry-validation.md，一键更新见 evidence/update-validation.md。前端插件详情页可配置 A/B、开关、文风、完整的起草/核对提示词、核对轮数和用户预算，并新增公开仓库的一键更新入口。旧版本验收文档保留作历史证据。
+2026-11-07：本地开发版本升为 0.3.0，新增按项目的“英文底稿 + 单次中文翻译”。设置保存 DSH workspace id；A 的系统提示通过 `system-prompt/assemble` 追加英文规则；翻译 attempt 不采集、传输或持久化工作材料，B 只收到 A 最终正文并调用一次。记录使用 `policyVersion/promptVersion: 3` 和 `translate` 阶段；完整提示预设覆盖规则时通过实际 `system/message` 标记检测并跳过 B，晚期路由变更同样跳过。类型检查、69 项测试、构建和打包通过；真实 A/B 遵循率、译文质量、延迟和费用尚未验收，隔离 Web 项目选择与真实翻译流程也待验收。下述 0.2.4/0.2.3 内容保留为历史交接；0.3.0 安装包为 dist/dsh-plugins-model-spokesperson-0.3.0.tgz，尚未发布。
+
+2026-10-29：0.2.4 新增输入超限的实际字符数/限额及可操作提示，重试前用当前设置和下一未复用阶段检查预算，仍超限直接返回可读错误，不增加重试计数。修改限额后可仅恢复 B，核对超限时复用已有初稿。用户反馈会话的后一次报告被 `input-limit` 阻止（工作 JSON 1,069,622 字符，当前限额 1,000,000；连续重试 23 次）。诊断只读日常记录/配置，没有复制会话正文和凭据、修改用户设置或调用真实 B。0.2.4 安装包为 dist/dsh-plugins-model-spokesperson-0.2.4.tgz，尚未发布。
+
+当前版本 0.3.0，针对 DSH 0.2.1-rc.3。安装包 dist/dsh-plugins-model-spokesperson-0.3.0.tgz；使用步骤见 README。独立报告流程见 evidence/report-validation.md，提示词设置见 evidence/prompt-validation.md，手动重试见 evidence/retry-validation.md，一键更新见 evidence/update-validation.md，翻译方式见 evidence/translation-validation.md。前端插件详情页可配置 A/B、开关、文风、完整的起草/核对提示词、核对轮数、按项目的英文底稿/翻译和用户预算，并保留公开仓库的一键更新入口。旧版本验收文档保留作历史证据。
 
 0.2.3 的 update.ts / update-action.tsx / update-client.tsx 在 plugins.detail.actions 注册只针对本 bundle 的更新控件。仓库已公开，因此检查直接在浏览器读取 GitHub Releases，不使用 Host 路由或 token；只接受带 tgz 资产的稳定 Release，缓存五分钟，超时十秒。安装使用 Release 的 npm tarball URL 调 pluginManager.installBundle 覆盖安装，不调用 removeBundle，避免卸载正在显示按钮的自身；tarball 也跳过 Host 固定的五秒 Git 连接预检。返回 applied 时提示刷新 Client，restart-required 时提示重启；设置、历史与失败回退由现有 profile 机制保留。0.2.2 及更早版本需先手动安装 0.2.3。
 
