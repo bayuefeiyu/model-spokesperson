@@ -1,6 +1,6 @@
 # 实施方案 · 指定模型的英文回复与单次中文翻译
 
-2026-11-07 · 已实施（基线 0.3.0）。目标宿主为 DeepSeek Harness 0.2.1-rc.3。
+2026-11-07 · 已实施（基线 0.3.0；0.3.1 适配 DSH 0.2.2-rc.1）。目标宿主为 DeepSeek Harness 0.2.2-rc.1。
 
 ## 用户操作与结果
 
@@ -33,6 +33,8 @@
 先前的内存探针通过 DSH 正式 agent loop 和模型选择组件检测发给 mock adapter 的请求。顺序为 A → C → A，再独立调用 B，标记出现情况依次为 **有、无、有、无**。该结果验证了普通模型选择路径上的当前系统提示；真实模型的语言遵循率、项目开关和界面尚待验证。
 
 两个宿主边界需要在编码时处理。其一，完整提示预设（`complete: true`）可覆盖普通 section，按最终渲染结果判断本步是否采用翻译方式。其二，其他插件可能在稍后的 `agent/request` 阶段重新路由。组装时记录预期路由，在实际发出的 loop 请求处复核；若二者不同，跳过该次 B 并记录原因。此时检查只能防止误译，不能撤回已渲染的英文指令。严格要求 C 看不到该指令的组合，需在组装前完成路由，或识别为不兼容并停用该组合的注入。历史英文消息仍是会话事实，验收应检查当前有效指令与实际请求。参考 [DSH 系统提示接口](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/core/system-prompt/README.md)。
+
+**0.2.2 更新**：新 agent loop 在 step preparation 后拒绝 `agent/request` 改路由，明确要求先调用 `agent.model.select()`。因此 0.2.2 的正常模型切换在下一步组装时生效；插件的组装/实际路由复核保留为旧版或允许该改法的自定义组合的防御，实际验证改用 `agent.model.select()` 覆盖 A → C → A。
 
 ## B 的请求与消息生命周期
 
@@ -75,4 +77,4 @@ B 提示草案：
 - 设置保存 `translationWorkspaces`（workspace id）、`translationTarget` 和 `translationPrompt`；设置页通过 Client 的 `workspaces` 投影列出项目，没有活动项目时要求先选择。
 - A 的规则由 `system-prompt/assemble` 的 prepend 外层监听器追加；`agent/request` 记录最终路由；翻译 attempt 不采集工作材料，B 输入只有 A 正文。
 - 翻译记录为 `policyVersion/promptVersion: 3` + `translate` 阶段；完整提示预设通过实际 `system/message` 标记检测；晚期路由变化记录 `translation-route-changed`。
-- 自动验证 69 项通过，类型检查、构建和打包通过。真实模型质量、隔离 Web 项目选择和真实翻译流程仍未验收；`npm run pack:plugin` 生成的 0.3.0 tarball 未发布。
+- 自动验证 69 项通过（DSH 0.2.2-rc.1），类型检查、构建和打包通过。真实模型质量、隔离 Web 项目选择和真实翻译流程仍未验收；`npm run pack:plugin` 生成的 0.3.0 tarball 未发布。

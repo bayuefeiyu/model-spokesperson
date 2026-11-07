@@ -85,5 +85,4 @@ export function matchRule(settings: Settings, route: Route) {
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap { modelSpokesperson: RewriteProjection }
-  interface SessionProjectionStateMap { modelSpokesperson: RewriteState }
 }

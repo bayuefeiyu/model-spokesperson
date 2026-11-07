@@ -170,11 +170,10 @@ test('route switching, auxiliary calls, runtime children and B using A route', a
   });
   try {
     let selected = 'a';
-    f.ctx.on('agent/request', async (_payload, next) => ({ ...await next(), model: selected }));
     await f.prompt(); await f.waitRow();
-    selected = 'c'; await f.prompt();
+    selected = 'c'; f.agent.model.select({ provider: 'mock', model: selected }); await f.prompt();
     assert.equal(f.rows().length, 1);
-    selected = 'a'; await f.prompt(); await f.waitRow(row => row.turn === 3 && row.status === 'ready');
+    selected = 'a'; f.agent.model.select({ provider: 'mock', model: selected }); await f.prompt(); await f.waitRow(row => row.turn === 3 && row.status === 'ready');
     assert.equal(f.adapter.calls.length, 7);
     for await (const _ of f.ctx.llm.stream({ provider: 'mock', model: 'a', messages: [], purpose: 'session-title' })) {}
     const child = await f.ctx.agents.create({ sessionId: SessionId('child'), parentAgent: f.agent, meta: { origin: 'subagent' }, agentOptions: { provider: 'mock', model: 'a' } });
@@ -780,19 +779,25 @@ test('a complete system-prompt preset suppresses the A rule, so no translation i
   } finally { await f.ctx.fiber.dispose(); }
 });
 
-test('a late route change is recorded and skips translation instead of translating another model', async () => {
+test('selecting C before a step bypasses translation and a later A step translates again', async () => {
   const cwd = process.cwd();
   let bCalls = 0;
   const f = await fixture(options => {
     if (options.model === 'b') { bCalls += 1; return text('中文译文'); }
     return text('English report.');
   }, { translationWorkspaces: ['ws-1'] }, { cwd, workspaceId: 'ws-1' });
-  f.ctx.on('agent/request', async (_payload, next) => ({ ...await next(), provider: 'mock', model: 'c' }), { global: true, prepend: true });
   try {
+    f.agent.model.select({ provider: 'mock', model: 'c' });
     await f.prompt();
-    const row = await f.waitRow(candidate => candidate.status === 'bypass');
-    assert.equal(row.reason, 'translation-route-changed');
+    assert.equal(f.rows().length, 0);
     assert.equal(bCalls, 0);
+    const c = f.adapter.calls.find(call => call.model === 'c')!;
+    assert.ok(!systemOf(c).includes(TRANSLATION_MARKER));
+    f.agent.model.select({ provider: 'mock', model: 'a' });
+    await f.prompt();
+    const row = await f.waitRow();
+    assert.equal(row.policyVersion, 3);
+    assert.equal(bCalls, 1);
   } finally { await f.ctx.fiber.dispose(); }
 });
 

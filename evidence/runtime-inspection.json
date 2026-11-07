@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "checkedAt": "2026-10-27T22:37:16.791258+08:00",
+  "checkedAt": "2026-11-07T21:58:00.650079+08:00",
   "installation": "G:\\ai\\harness\\dsh desktop",
   "archive": {
     "path": "G:\\ai\\harness\\dsh desktop\\resources\\app.asar",
-    "bytes": 182434783,
-    "sha256": "04b32e3a872826ba15cfb2081c6a929a8d4ecaa65e09a2543e5a6b30e2eff1f0"
+    "bytes": 213202918,
+    "sha256": "5fa8a6b21bceb8f3e99e30efa2270efd0cc773a11e42aa0488f804a64b34e637"
   },
   "limitations": [
     "This inspects the specified directory, not the actual running application.",
@@ -16,17 +16,20 @@
   "packages": {
     "desktop": {
       "asarPath": "package.json",
-      "sha256": "ac5d5922a061519322befb742e8b8285197d6ca975a2a38e8049ef37c67e63d2",
+      "sha256": "cbf5dc8ff3e6318cc61d966010e427aefa2042a1371155596de7f5af53bd3c64",
       "name": "@deepseek-ai/dsh-desktop",
-      "version": "0.2.1-rc.3",
-      "dshBuildCommit": "be72761ee1a6736ebcdf4f3739363b083ae53c98",
+      "version": "0.2.2-rc.1",
+      "dshBuildCommit": "c59d10aff167ad7eefead4b3a9082fb57c8fbfe8",
       "dshBuildDirty": false
     },
     "dsh": {
       "asarPath": "dsh/node_modules/@deepseek-ai/dsh/package.json",
-      "sha256": "11831849c0a40031562e07b6b650e6b417bf4741d15bac896f73397cf8606a91",
+      "sha256": "3e14837ceb3bbc0ba419ed08e9b5ba164338369b1268b93c3c25d89f7b1c9953",
       "name": "@deepseek-ai/dsh",
-      "version": "0.2.1-rc.3",
+      "version": "0.2.2-rc.1",
+      "engines": {
+        "node": ">=24.9.0"
+      },
       "repository": {
         "type": "git",
         "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
@@ -35,9 +38,9 @@
     },
     "dsh-llm": {
       "asarPath": "dsh/node_modules/@deepseek-ai/dsh-llm/package.json",
-      "sha256": "381b8948adee1ae66db2a301a22df879aa780604143e494daf1b07ada57d668f",
+      "sha256": "d7ca17b59abc24e2d7ecd7f3db64fd2dbb1eac183c62a6004ae70333d62d8df3",
       "name": "@deepseek-ai/dsh-llm",
-      "version": "0.2.1-rc.3",
+      "version": "0.2.2-rc.1",
       "repository": {
         "type": "git",
         "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
@@ -46,9 +49,9 @@
     },
     "dsh-agent": {
       "asarPath": "dsh/node_modules/@deepseek-ai/dsh-agent/package.json",
-      "sha256": "3ed4384bc3bf273bfc1d8cba104f073daf9d72fb8e7e995325708cd22b510f99",
+      "sha256": "20dd3afcc9bf7cd12e3a98cc6fb2f6f1aa0ba22f7fac222fbcf5187776982e55",
       "name": "@deepseek-ai/dsh-agent",
-      "version": "0.2.1-rc.3",
+      "version": "0.2.2-rc.1",
       "repository": {
         "type": "git",
         "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
@@ -57,9 +60,9 @@
     },
     "dsh-client-ui-chat": {
       "asarPath": "dsh/node_modules/@deepseek-ai/dsh-client-ui-chat/package.json",
-      "sha256": "12fca533ab0c1ce6f2407362564a97ba7634f576ac661769c9e1342c0cff6f38",
+      "sha256": "05f0e0ed84a9b4a4eea838527f47e6b2d657afeff407ad78e060c302e9c4b7b3",
       "name": "@deepseek-ai/dsh-client-ui-chat",
-      "version": "0.2.1-rc.3",
+      "version": "0.2.2-rc.1",
       "repository": {
         "type": "git",
         "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
@@ -68,9 +71,9 @@
     },
     "cordis": {
       "asarPath": "dsh/node_modules/@deepseek-ai/cordis/package.json",
-      "sha256": "b73831b926b16cbd684aa1b277461e7800a2b35e2dd351ad3c2c8c0db158589d",
+      "sha256": "70be1056619663339433309474b1e6a2307088097af3cb082afe4b5ca2021b26",
       "name": "@deepseek-ai/cordis",
-      "version": "4.0.5",
+      "version": "4.1.0",
       "repository": {
         "type": "git",
         "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
@@ -80,7 +83,7 @@
   },
   "interfaces": {
     "dsh/node_modules/@deepseek-ai/dsh-llm/lib/index.js": {
-      "sha256": "d18d8ae4c8d961e628708c1e4698e09716a0ebb80e55a672e0bde1029bec1155",
+      "sha256": "8e541fc98a11897706a122fde1db42f8b2a41b3b354ba3fcb932e9a16929ac6a",
       "matches": [
         {
           "pattern": "isAgentLoopRequest",
@@ -90,13 +93,13 @@
         },
         {
           "pattern": "isAgentLoopRequest",
-          "line": 2429,
+          "line": 2434,
           "text": "export { ACCOUNT_QUOTA_EXCEEDED_CODE, APP_IDENTITY, AssistantStreamAccumulator, BlockAssembler, CONTEXT_SUMMARY_MAX_CHARS, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, HarnessError, IMAGE_OFFLOAD_REQUIRED_CODE, INVALID_CREDENTIAL_CODE, LlmAdapter, LlmAttemptId, LlmError, LlmRuntime, LlmRuntime as default, MessageId, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId, RetryPolicySchema, ToolCallId, assembleAssistantStream, assertUsableApiKey, assistantStreamChunks, assistantStreamFirstTokenTime, assistantStreamHasVisibleContent, assistantStreamHasVisibleText, attributionHeaders, boundContextSummary, callConfigEquals, chunkHasVisibleText, contentHasFile, contentHasImage, createAssistantMessage, createDeveloperMessage, createMessage, createSystemMessage, createToolResultMessage, ",
           "nextLine": ""
         },
         {
           "pattern": "\"llm/stream\"",
-          "line": 2397,
+          "line": 2402,
           "text": "\t\t\treturn this.ctx.waterfall(this, \"llm/stream\", options, () => this.adapterStream(options, prepared));",
           "nextLine": "\t\t}"
         }
@@ -104,13 +107,13 @@
       "missingPatterns": []
     },
     "dsh/node_modules/@deepseek-ai/dsh-llm/lib/typert.host.js": {
-      "sha256": "22d86e67e013714b9b70eb119f85b825d73a52e30d6ebd5d7894dc4a2965076a",
+      "sha256": "f7ad1bf944fb7083c84a0626cf8e77d0ef037e12603ea6c2284794e6f20240de",
       "matches": [
         {
           "pattern": "\"name\": \"GenerateOptions\"",
           "line": 359,
           "text": "            \"name\": \"GenerateOptions\",",
-          "nextLine": "            \"declaration\": \"export interface GenerateOptions {\\n    provider: string;\\n    model: string;\\n    reasoningEffort?: ReasoningEffortId;\\n    messages: RequestMessage[];\\n    system?: string;\\n    tools?: ToolSchema[];\\n    toolHistory?: ToolHistory;\\n    temperature?: number;\\n    maxTokens?: number;\\n    stop?: string[];\\n    signal?: AbortSignal;\\n    sessionId?: Branded<'SessionId'>;\\n    purpose?: 'compaction' | 'session-title';\\n}\""
+          "nextLine": "            \"declaration\": \"export interface GenerateOptions<Purpose extends string = LlmRequestPurpose> {\\n    provider: string;\\n    model: string;\\n    reasoningEffort?: ReasoningEffortId;\\n    messages: RequestMessage[];\\n    system?: string;\\n    tools?: ToolSchema[];\\n    toolHistory?: ToolHistory;\\n    temperature?: number;\\n    maxTokens?: number;\\n    stop?: string[];\\n    signal?: AbortSignal;\\n    sessionId?: Branded<'SessionId'>;\\n    purpose?: Purpose;\\n}\""
         },
         {
           "pattern": "\"name\": \"FinishReasonMap\"",
@@ -120,13 +123,13 @@
         },
         {
           "pattern": "\"name\": \"StreamChunk\"",
-          "line": 571,
+          "line": 595,
           "text": "            \"name\": \"StreamChunk\",",
           "nextLine": "            \"declaration\": \"export type StreamChunk = { type: 'block-start'; index: number; blockType: ContentBlockType; } | { type: 'text-delta'; index: number; text: string; } | { type: 'reasoning-delta'; index: number; text: string; } | { type: 'tool-call-delta'; index: number; id: ToolCallId; name?: string; argumentsDelta: string; } | { type: 'block-end'; index: number; block: ContentBlock; } | { type: 'usage'; usage: TokenUsage; } | { type: 'finish'; reason: FinishReason; replayState?: ReplayEnvelope; };\""
         },
         {
           "pattern": "\"name\": \"llm/stream\"",
-          "line": 698,
+          "line": 743,
           "text": "        \"name\": \"llm/stream\",",
           "nextLine": "        \"mode\": \"waterfall\","
         }
@@ -134,7 +137,7 @@
       "missingPatterns": []
     },
     "dsh/node_modules/@deepseek-ai/dsh-llm/README.md": {
-      "sha256": "9cc8f2c8d30f9ba44afb8d14f3bbf5f31fbdfb01f950a51a49a1322e2a841049",
+      "sha256": "97ce5244e9102535ef6bcce234002a7635019ad8338a2e2b0bb303d65644b480",
       "matches": [
         {
           "pattern": "deep-frozen",
@@ -144,19 +147,19 @@
         },
         {
           "pattern": "deep-frozen",
-          "line": 107,
+          "line": 109,
           "text": "The service is built on one separation: **the logical contract is provider-neutral, adapters own the wire.** It defines the canonical message, content-block, and stream-chunk vocabulary once, and every provider adapter translates only its own wire format into that vocabulary. The registry is the topology owner — adapter routes, configurable-provider entries, and discovery offers all register here and are disposed with their fiber — while an agent-loop request stays a pure function of the session log: loop-built requests arrive deep-frozen, so listeners and adapters read them and never rewrite them.",
           "nextLine": ""
         },
         {
           "pattern": "replay",
-          "line": 89,
+          "line": 91,
           "text": "- **Read an embedded Assistant stream without expanding it** — `assistantStreamFirstTokenTime` (first token), `assistantStreamHasVisibleContent` (any visible content), and `assistantStreamHasVisibleText` (any visible text) answer their questions from the compact records with early exit; `lastAssistantStreamChunk` scans backward to the last raw chunk of one type, `assistantStreamChunks` and `joinAssistantStreamText` scan the whole stream, and `assembleAssistantStream` feeds a `BlockAssembler` one joined delta per run with the same blocks, usage, and replay state as the per-member expansion. `runFirstTokenTime` and `runFirstVisibleTime` do the early-exit scan for one packed run, and `isTokenDelta`, `isVisibleChunk`, and `chunkHasVisibleText` define the token and visibility rules for a single",
           "nextLine": ""
         },
         {
           "pattern": "replay",
-          "line": 134,
+          "line": 136,
           "text": "- **Replay state travels only within one adapter** — assistant replay state rides along only when the same adapter instance owns the historical and target routes; otherwise it is dropped before dispatch.",
           "nextLine": "- **Prepared calls are one-shot** — a prepared call can be dispatched exactly once, and its call-config fields must match the prepared config."
         },
@@ -168,7 +171,7 @@
         },
         {
           "pattern": "ctx.llm.stream",
-          "line": 84,
+          "line": 86,
           "text": "- **Stream one model call** — `ctx.llm.stream(options)` yields raw chunks (token-level deltas) for any registered provider and model; consumers assemble them with `BlockAssembler`.",
           "nextLine": "- **Register provider adapters** — an adapter owns one or more provider routes, and its registration captures that route's retry policy; registering the same route twice fails with `DUPLICATE_ADAPTER`."
         }
@@ -176,36 +179,36 @@
       "missingPatterns": []
     },
     "dsh/node_modules/@deepseek-ai/dsh-client-ui-chat/README.md": {
-      "sha256": "4c490b99a09d2d3136c3cfd06931d12f400acb5047baab8a92fd5a29b7fc7919",
+      "sha256": "871ff9c4f3ea821d2b30419108c1ec657024ab949bbf3a4fee9a7ae21fe47fd6",
       "matches": [
         {
           "pattern": "does not assemble",
           "line": 13,
-          "text": "Use this package to render a browser chat from recorded Session conversations, including historical images, localized actions, and restored scroll position. Work-details modes control reasoning previews and process visibility without hiding final answers; Verbose keeps completed-turn process rows visible. Local transcript and steering submissions appear immediately, remain in their original surface, and disappear atomically when authoritative Session records arrive, while queued submissions stay outside Chat. The package does not assemble or modify model requests.",
+          "text": "Use this package to render a browser chat from recorded Session conversations, including historical images, localized actions, and restored scroll position. Work-details modes control reasoning previews and process visibility without hiding Assistant replies; Verbose keeps completed-turn process rows visible. Local transcript and steering submissions appear immediately, remain in their original surface, and disappear atomically when authoritative Session records arrive, while queued submissions stay outside Chat. The package does not assemble or modify model requests.",
           "nextLine": ""
         },
         {
           "pattern": "does not assemble",
-          "line": 182,
+          "line": 200,
           "text": "None; Chat presentation does not assemble or mutate provider requests.",
           "nextLine": ""
         },
         {
           "pattern": "replay",
-          "line": 60,
+          "line": 66,
           "text": "Generic command rows retain the ordinary command glyph in every lifecycle state; failure remains explicit through the row state and summary. Every terminal Turn failure renders its inline red-dot row; a quota failure's row states the neutral `message.failure.quota` copy instead of the provider message. The transient notice for a newly appended `QUOTA` or `ACCOUNT_QUOTA` comes from this package's frame-wide entry in `shell.overlay`, which outlives the Chat panel: it offers the one live notice to the `shell.quota-notice` chain and falls back to its own warning Toast, while an entry that claims the code replaces that fallback. Only Sessions this Client has bound and materialized publish; quota failures in Sessions it never opened do not. A newer notice replaces the current one unless a claimi",
           "nextLine": ""
         },
         {
           "pattern": "Assistant",
-          "line": 38,
-          "text": "`ChatView` supplies file and HTTP(S) navigation through the existing `MarkdownDelegateProvider` around its node list, passing `requestOpenFile`, `openExternalLink`, and `fileImages` directly. Its file opener retains Chat's failure feedback and retry handling. Assistant Markdown file links open in the right Sidebar after the message settles, including references to unmodified files. Relative paths resolve in the viewed Session's workspace; absolute paths retain the same Session's filesystem access. `#L24` and `#L24-L30` navigate to the first specified line and reuse an existing file tab. Missing files show the preview's error state.",
+          "line": 13,
+          "text": "Use this package to render a browser chat from recorded Session conversations, including historical images, localized actions, and restored scroll position. Work-details modes control reasoning previews and process visibility without hiding Assistant replies; Verbose keeps completed-turn process rows visible. Local transcript and steering submissions appear immediately, remain in their original surface, and disappear atomically when authoritative Session records arrive, while queued submissions stay outside Chat. The package does not assemble or modify model requests.",
           "nextLine": ""
         },
         {
           "pattern": "Assistant",
           "line": 40,
-          "text": "Native message images use separate user and output positions. The `conversation.chat.user.content` Factory declares `conversation.chat.user.images`, which `UserContent` renders; the Assistant node registration declares `conversation.chat.message.images`, which `AssistantMarkdown` renders. Both receive image sources, the authorized `loadImage`, and layout options through explicit props. Their official `MessageImages` entries call the shared root-scoped `conversation.images.content` Factory. Each position can be replaced independently without duplicating the gallery implementation.",
+          "text": "`ChatView` supplies file and HTTP(S) navigation through the existing `MarkdownDelegateProvider` around its node list, passing `requestOpenFile`, `openExternalLink`, and `fileImages` directly. Its file opener retains Chat's failure feedback and retry handling. Assistant Markdown file links open in the right Sidebar after the message settles, including references to unmodified files. Relative paths resolve in the viewed Session's workspace; absolute paths retain the same Session's filesystem access. [Supported Markdown line references](../ui-primitives/README.md#rendering-agent-output) navigate to the first specified line and reuse an existing file tab. Missing files show the preview's error state.",
           "nextLine": ""
         }
       ],

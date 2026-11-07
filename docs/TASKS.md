@@ -1,12 +1,22 @@
 # 开发任务状态
 
+## 0.3.1 适配 DSH 0.2.2-rc.1
+
+- [x] 依赖升级到 0.2.2-rc.1；Cordis 4.1.0、Cosmokit 1.9.0、Schemastery 3.19.0。
+- [x] `sessionProjections.register` 改为 awaited `ProjectionHandle`，Host `apply` 改异步，读取全部改用 `handle.stateOf()`。
+- [x] 路由切换测试改用 `agent.model.select()`；确认 0.2.2 会在 step preparation 后拒绝 `agent/request` 改路由。
+- [x] 在 0.2.2 运行环境重新通过类型检查、69 项测试和构建。
+- [x] 打包 0.3.1 tarball 并更新文档、示例和验收记录。
+- [x] 隔离 profile 安装 0.3.1、启动 Web（端口 31951）和 browser smoke 无错误。
+- [ ] 实际点击项目选择、保存翻译设置并跑完整翻译链路；真实 A/B 模型质量抽样。
+
 ## 0.3.0 按项目的英文底稿与单次翻译
 
 - [x] 设置按项目保存 workspace id；设置页提供项目选择器，未列出的项目继续旧方式。
 - [x] `system-prompt/assemble` 按最终 provider/model 和项目开关追加英文规则，保留其他 sections/tools/contexts/variables。
 - [x] 翻译 attempt 不采集、传输或持久化工作材料；B 只收到 A 最终正文并调用一次。
 - [x] `policyVersion/promptVersion: 3`、`translate` 阶段、目标语言和独立 usage；手动重试只额外调用一次 B。
-- [x] 完整提示预设覆盖规则、晚期路由变更、输入超限、失败/取消/重启恢复和旧记录兼容。
+- [x] 完整提示预设覆盖规则、`agent.model.select()` 切 C/切回 A、输入超限、失败/取消/重启恢复和旧记录兼容。
 - [x] 类型检查、69 项测试和构建通过；`npm run pack:plugin` 生成 0.3.0 tarball。
 - [ ] 真实 A/B 的英文遵循率、译文质量、延迟和费用抽样；隔离 Web 项目选择与真实翻译流程验收。
 

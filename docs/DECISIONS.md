@@ -60,4 +60,4 @@ draftPrompt/reviewPrompt 各自保存完整提示词，包含此前共用的 COM
 
 工作方式按 DSH workspace id 保存在现有配置中，未列出的项目继续使用独立起草 + 核对。A 的英文规则通过 `system-prompt/assemble` 追加，不修改冻结请求；翻译 attempt 不采集工作材料，B 只收到 A 最终正文并调用一次。设置页在没有活动 workspace 时提供项目选择器，而不是把项目写进 `AGENTS.md` 或使用路径字符串。
 
-完整提示预设可以覆盖追加 section，因此 Host 在 A 结束后检查实际生效的 `system/message` 标记；缺失时跳过 B 并记录原因。`agent/request` 的最终路由与组装记录不一致时同样跳过，防止把其他模型误译。翻译记录使用 `policyVersion/promptVersion: 3` 和 `translate` 阶段，旧记录读取与手动重试保持兼容；真实模型遵循率和译文质量仍靠抽样验收，不由结构检查证明。
+完整提示预设可以覆盖追加 section，因此 Host 在 A 结束后检查实际生效的 `system/message` 标记；缺失时跳过 B 并记录原因。`agent/request` 的最终路由与组装记录不一致时同样跳过，防止把其他模型误译；DSH 0.2.2 会在 step preparation 后拒绝该改法，要求先 `agent.model.select()`，因此该检查主要保留给旧版或允许改路由的组合。翻译记录使用 `policyVersion/promptVersion: 3` 和 `translate` 阶段，旧记录读取与手动重试保持兼容；真实模型遵循率和译文质量仍靠抽样验收，不由结构检查证明。

@@ -46,7 +46,7 @@ function totalUsage(stages: NonNullable<Rewrite['stages']>): TokenUsage | undefi
 }
 
 /** A executes; B drafts independently and then checks its own report against A's. */
-export function apply(ctx: Context, raw: RuntimeSettings = {}) {
+export async function apply(ctx: Context, raw: RuntimeSettings = {}) {
   const queue = new RewriteQueue(readSettings(raw).maxConcurrentRewrites);
   ctx.inject(['settings'], child => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
@@ -58,7 +58,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
   const settled = new WeakMap<Session, SessionEvent<'assistant/message'>>();
   const translationRuleIntents = new Map<Agent, { provider: string; model: string; at: number }>();
   const translationSteps = new Map<Agent, Map<string, TranslationStep>>();
-  ctx.sessionProjections.register({
+  const projection = await ctx.sessionProjections.register({
     key: PROJECTION, stateSchema: StateSchema, stateVersion: 1,
     init: () => ({ rows: {}, latestUser: '', synced: [] }), apply: foldRewrites,
     // Full requests/work records stay in the durable log, not the chat projection wire.
@@ -303,7 +303,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
       agent = result.agent;
     }
     if (!isMain(agent) || agent.status !== 'idle') return { accepted: false, message: '请等待 A 完成当前工作后再重试。' };
-    const row = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows[stepKey(request.turn, request.step)];
+    const row = projection.stateOf(agent.session).rows[stepKey(request.turn, request.step)];
     if (!row || ![2, 3].includes(row.policyVersion) || row.attemptId !== request.attemptId || row.originalMessageId !== request.originalMessageId || (row.retryCount ?? 0) !== request.retryCount || !['fallback', 'cancelled'].includes(row.status)) return { accepted: false, message: '这条回复的状态已改变，请刷新后再试。' };
     const messages = agent.session.deriveMessages();
     const position = messages.findIndex(message => message.id === row.originalMessageId);
@@ -341,7 +341,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
     }
     // Older failures before the first B call did not save a request. Use only
     // the surviving history prefix before A's report, never later conversation.
-    context ??= captureWorkContext(messages.slice(0, position), ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {});
+    context ??= captureWorkContext(messages.slice(0, position), projection.stateOf(agent.session).rows);
     if (!context.workContext.length) return { accepted: false, message: '这条历史回复缺少可恢复的工作材料，无法重试。' };
     const next: Rewrite = { ...row, sessionId: agent.session.id, writer: rule.writer, context,
       stages: row.stages?.map(stage => ({ ...stage, writer: stage.writer ?? row.writer })),
@@ -457,7 +457,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
         row: { schemaVersion: 1, policyVersion: 2, promptVersion: 2, sessionId: agent.session.id,
           turn: frame.turn, step: frame.step, attemptId: frame.attemptId,
           source: rule.source, writer: rule.writer, status: 'collecting', retryCount: 0, reviewRounds: settings.reviewRounds, startedAt: Date.now() },
-        context: captureWorkContext(agent.session.deriveMessages(), ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {}),
+        context: captureWorkContext(agent.session.deriveMessages(), projection.stateOf(agent.session).rows),
         policy: settings, terminal: false, done: false, controller: new AbortController(),
       };
       map.set(key, attempt);
@@ -533,7 +533,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
     const decision = await next();
     // Historical display drafts remain visible when future rewrites are off.
     if (!isMain(agent) || decision.kind !== 'enter' || decision.messages.length === 0) return decision;
-    const state = ctx.sessionProjections.stateOf(agent.session, PROJECTION);
+    const state = projection.stateOf(agent.session);
     const seen = new Set(state?.synced ?? []);
     const visibleMessages = new Set<string>(agent.session.deriveMessages().map(message => message.id));
     const rows = state?.rows ?? {};
@@ -545,7 +545,7 @@ export function apply(ctx: Context, raw: RuntimeSettings = {}) {
   }, { global: true });
   function recover(agent: Agent) {
     if (!isMain(agent)) return;
-    const rows = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {};
+    const rows = projection.stateOf(agent.session).rows;
     for (const row of Object.values(rows)) {
       if (row.status !== 'collecting' && row.status !== 'rewriting') continue;
       const staged = row.policyVersion === 1

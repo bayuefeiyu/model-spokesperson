@@ -2,7 +2,7 @@
 
 指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-当前本地开发版本为 Host + Web Client bundle **0.3.0**，目标为 **DeepSeek Harness 0.2.1-rc.3**，不承诺兼容其他版本。本地安装包：`dist/dsh-plugins-model-spokesperson-0.3.0.tgz`；最近公开 Release 仍为 0.2.2，0.2.3/0.2.4/0.3.0 尚未发布 GitHub Release。
+当前本地开发版本为 Host + Web Client bundle **0.3.1**，目标为 **DeepSeek Harness 0.2.2-rc.1**，不承诺兼容其他版本。本地安装包：`dist/dsh-plugins-model-spokesperson-0.3.1.tgz`；最近公开 Release 仍为 0.2.2，0.2.3/0.2.4/0.3.0/0.3.1 尚未发布 GitHub Release。
 
 GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
@@ -26,7 +26,7 @@ GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 - A 正常结束且该步没有工具调用时，B **只收到 A 的这条回复**，按目标语言和表达偏好翻译一次；不读取工作上下文、工具结果、文件内容或历史。翻译请求不含工具，也没有核对轮次。
 - 前端等待时显示“B 正在翻译…”，完成后在原行显示译文，保留“查看 A 的原文”和“复制 B 回复”。失败、超时、截断、空输出或超限时回退 A 原文；失败行提供手动重试，只额外调用一次 B。
 - 翻译方式下，独立起草提示词、核对提示词和核对轮数仍保留，但界面隐藏；关闭该项目的勾选后恢复旧方式。总开关关闭时 A 直接发言。
-- 完整提示预设（`complete: true`）可能覆盖插件追加的规则。插件会在实际生效的 `system/message` 中核对规则标记；缺失时跳过翻译并显示 A 原文，不额外调用 B。其他插件在 `agent/request` 阶段改路由时同样跳过，并记录原因。
+- 完整提示预设（`complete: true`）可能覆盖插件追加的规则。插件会在实际生效的 `system/message` 中核对规则标记；缺失时跳过翻译并显示 A 原文，不额外调用 B。DSH 0.2.2 在 step preparation 后拒绝 `agent/request` 改路由；插件仍保留路由复核，用于兼容允许该改法的旧版或自定义组合。
 - 翻译方式只读取 A 的最终正文，所以同一项目的历史再长也不会进入 B 的翻译输入；但 A 仍需携带完整上下文，真实模型的输出质量、延迟和费用需要按项目抽样验证。
 
 ## 安装和配置
@@ -40,7 +40,7 @@ GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 ```powershell
 rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.2.2
 # 也可下载 Release 安装包后使用本地路径：
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.0.tgz
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.1.tgz
 ```
 
 如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。
@@ -144,12 +144,14 @@ rtk proxy npm run pack:plugin
 
 0.2.3 在插件详情页增加公开仓库版本检查和一键更新；客户端读取 GitHub 稳定 Release 及其 tarball 资产，安装时覆盖安装，不调用 `removeBundle`。类型检查、56 项测试、构建和隔离 Web 验收通过；没有静默自动安装，也不修改 DSH 安装包。0.2.2 及更早版本需要首次手动安装 0.2.3。验收见 [更新验收](evidence/update-validation.md)。
 
-0.3.0 增加按项目的“英文底稿 + 单次中文翻译”。A 的系统提示注入英文规则；翻译分支不采集、传输或持久化工作材料，B 只收到 A 的最终正文并调用一次。完整提示预设和晚期路由变更会跳过翻译并记录原因。类型检查、69 项测试、构建和打包通过；真实 A/B 的英文遵循率、译文质量和费用仍需按项目抽样，浏览器端项目选择和真实翻译流程尚未做隔离 Web 验收。
+0.3.0 增加按项目的“英文底稿 + 单次中文翻译”。A 的系统提示注入英文规则；翻译分支不采集、传输或持久化工作材料，B 只收到 A 的最终正文并调用一次。完整提示预设和路由变化会跳过翻译并记录原因。
+
+0.3.1 将目标升级到 DSH **0.2.2-rc.1**：SDK 依赖、Cordis 4.1.0、Cosmokit 1.9.0、Schemastery 3.19.0 同步更新；`sessionProjections.register` 改为 awaited handle，路由切换测试改用 `agent.model.select()`（0.2.2 在 step preparation 后拒绝 `agent/request` 改路由）。类型检查、69 项测试、构建和打包通过；真实 A/B 的英文遵循率、译文质量和费用仍需按项目抽样，浏览器端项目选择和真实翻译流程尚未做隔离 Web 验收。
 
 工作上下文来自当时有效的会话消息；若宿主已压缩历史，只能提供保留下来的材料。A 本次调用中新产生且未写入先前记录的结论，第一步 B 无法获知，第二步只能把 A 报告作为参考核查。附件本身不直接读取，B 只获得不可见标记和 A 已实际读取的记录。
 
 当前支持主聊天 Web，不处理子 agent、标题、压缩摘要、CLI/SDK 或导出。第三方替换聊天 renderer 或带嵌套子槽的自定义思考/图片 renderer 需单独适配。
 
-[需求](docs/REQUIREMENTS.md) · [设计](docs/DESIGN.md) · [决策](docs/DECISIONS.md) · [任务](docs/TASKS.md) · [验收矩阵](docs/TEST-PLAN.md) · [翻译验收](evidence/translation-validation.md) · [运行时证据](evidence/runtime-inspection.json)
+[需求](docs/REQUIREMENTS.md) · [设计](docs/DESIGN.md) · [决策](docs/DECISIONS.md) · [任务](docs/TASKS.md) · [验收矩阵](docs/TEST-PLAN.md) · [翻译验收](evidence/translation-validation.md) · [0.2.2 适配](evidence/dsh-0.2.2-compat.md) · [运行时证据](evidence/runtime-inspection.json)
 
 日常安装 `G:\ai\harness\dsh desktop` 仅作只读参考。本次未向日常桌面 profile 安装插件，未修改其配置或安装包。

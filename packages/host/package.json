@@ -1,15 +1,15 @@
 {
-  "name": "@dsh-plugins/model-spokesperson-host", "version": "0.3.0", "type": "module",
-  "engines": { "dsh": "0.2.1-rc.3" },
-  "description": "A works; B independently drafts and reviews reports without tools",
+  "name": "@dsh-plugins/model-spokesperson-host", "version": "0.3.1", "type": "module",
+  "engines": { "dsh": "0.2.2-rc.1" },
+  "description": "A works; B independently drafts, reviews, or translates reports without tools",
   "main": "lib/index.js", "exports": { ".": "./lib/index.js", "./package.json": "./package.json" },
   "files": ["lib"],
   "peerDependencies": {
-    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.3", "@deepseek-ai/dsh-typert-registry": "0.2.1-rc.3",
-    "@deepseek-ai/cosmokit": "1.8.6",
-    "@deepseek-ai/cordis": "4.0.5", "@deepseek-ai/dsh-agent": "0.2.1-rc.3",
-    "@deepseek-ai/dsh-session": "0.2.1-rc.3", "@deepseek-ai/dsh-llm": "0.2.1-rc.3",
-    "@deepseek-ai/dsh-session-projection": "0.2.1-rc.3", "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.3",
-    "@deepseek-ai/schemastery": "3.18.5", "zod": "4.4.3"
+    "@deepseek-ai/dsh-typert-protocol": "0.2.2-rc.1", "@deepseek-ai/dsh-typert-registry": "0.2.2-rc.1",
+    "@deepseek-ai/cosmokit": "1.9.0",
+    "@deepseek-ai/cordis": "4.1.0", "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session": "0.2.2-rc.1", "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1", "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "3.19.0", "zod": "4.4.3"
   }
 }

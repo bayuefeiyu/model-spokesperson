@@ -454,7 +454,7 @@ function totalUsage(stages) {
   if (usages.every((usage) => usage.totalTokens !== void 0)) sum.totalTokens = usages.reduce((value, usage) => value + usage.totalTokens, 0);
   return sum;
 }
-function apply(ctx, raw = {}) {
+async function apply(ctx, raw = {}) {
   const queue = new RewriteQueue(readSettings(raw).maxConcurrentRewrites);
   ctx.inject(["settings"], (child) => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
@@ -466,7 +466,7 @@ function apply(ctx, raw = {}) {
   const settled = /* @__PURE__ */ new WeakMap();
   const translationRuleIntents = /* @__PURE__ */ new Map();
   const translationSteps = /* @__PURE__ */ new Map();
-  ctx.sessionProjections.register({
+  const projection = await ctx.sessionProjections.register({
     key: PROJECTION,
     stateSchema: StateSchema,
     stateVersion: 1,
@@ -734,7 +734,7 @@ function apply(ctx, raw = {}) {
       agent = result.agent;
     }
     if (!isMain(agent) || agent.status !== "idle") return { accepted: false, message: "\u8BF7\u7B49\u5F85 A \u5B8C\u6210\u5F53\u524D\u5DE5\u4F5C\u540E\u518D\u91CD\u8BD5\u3002" };
-    const row = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows[stepKey(request2.turn, request2.step)];
+    const row = projection.stateOf(agent.session).rows[stepKey(request2.turn, request2.step)];
     if (!row || ![2, 3].includes(row.policyVersion) || row.attemptId !== request2.attemptId || row.originalMessageId !== request2.originalMessageId || (row.retryCount ?? 0) !== request2.retryCount || !["fallback", "cancelled"].includes(row.status)) return { accepted: false, message: "\u8FD9\u6761\u56DE\u590D\u7684\u72B6\u6001\u5DF2\u6539\u53D8\uFF0C\u8BF7\u5237\u65B0\u540E\u518D\u8BD5\u3002" };
     const messages = agent.session.deriveMessages();
     const position = messages.findIndex((message) => message.id === row.originalMessageId);
@@ -791,7 +791,7 @@ function apply(ctx, raw = {}) {
       } catch {
       }
     }
-    context ??= captureWorkContext(messages.slice(0, position), ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {});
+    context ??= captureWorkContext(messages.slice(0, position), projection.stateOf(agent.session).rows);
     if (!context.workContext.length) return { accepted: false, message: "\u8FD9\u6761\u5386\u53F2\u56DE\u590D\u7F3A\u5C11\u53EF\u6062\u590D\u7684\u5DE5\u4F5C\u6750\u6599\uFF0C\u65E0\u6CD5\u91CD\u8BD5\u3002" };
     const next = {
       ...row,
@@ -942,7 +942,7 @@ function apply(ctx, raw = {}) {
           reviewRounds: settings.reviewRounds,
           startedAt: Date.now()
         },
-        context: captureWorkContext(agent.session.deriveMessages(), ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {}),
+        context: captureWorkContext(agent.session.deriveMessages(), projection.stateOf(agent.session).rows),
         policy: settings,
         terminal: false,
         done: false,
@@ -1027,7 +1027,7 @@ function apply(ctx, raw = {}) {
     await raceAbort(Promise.all(jobs.get(agent) ?? []), signal);
     const decision = await next();
     if (!isMain(agent) || decision.kind !== "enter" || decision.messages.length === 0) return decision;
-    const state = ctx.sessionProjections.stateOf(agent.session, PROJECTION);
+    const state = projection.stateOf(agent.session);
     const seen = new Set(state?.synced ?? []);
     const visibleMessages = new Set(agent.session.deriveMessages().map((message) => message.id));
     const rows = state?.rows ?? {};
@@ -1040,7 +1040,7 @@ ${JSON.stringify(row.rewrittenText)}` }]
   }, { global: true });
   function recover(agent) {
     if (!isMain(agent)) return;
-    const rows = ctx.sessionProjections.stateOf(agent.session, PROJECTION)?.rows ?? {};
+    const rows = projection.stateOf(agent.session).rows;
     for (const row of Object.values(rows)) {
       if (row.status !== "collecting" && row.status !== "rewriting") continue;
       const staged = row.policyVersion === 1 ? row.originalText && row.rewrittenText && !validateRewrite(row.originalText, row.rewrittenText) : row.policyVersion === 3 ? hasCompletedTranslation(row) : hasCompletedFinal(row);
