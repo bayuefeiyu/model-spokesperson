@@ -27,7 +27,7 @@
 - `rtk proxy npm run build`：Host ESM + Client module-loader 构建通过。
 - `rtk proxy npm run pack:plugin`：0.3.0 生成 `dist/dsh-plugins-model-spokesperson-0.3.0.tgz`（101,291 字节，SHA-256 `16878b17131a130d37981ff7bb7491878e9d338d5dd338e358ec682921d3a9c5`）；0.3.1 生成 `dist/dsh-plugins-model-spokesperson-0.3.1.tgz`（101,479 字节，SHA-256 `643db1dd54152b02a9eb6e928c90ce65ae9bc5bf252f6900b4abdf98707c3401`）；0.3.2 生成 `dist/dsh-plugins-model-spokesperson-0.3.2.tgz`（103,585 字节，SHA-256 `792e29491d95df65fc1568993e7be5d1d5d3cc153fa4f996639267e9696234cd`）。均已写入 `dist/SHA256SUMS.txt`。
 - 将 0.3.2 安装到隔离 profile `spokesperson-report`，`--dump-config` 退出码 0；启动端口 31952 后 `browser-smoke` 无 pageerror/console error。未实际点击项目选择或保存翻译设置。
-- 创建 `v0.3.2` tag 和 [GitHub Release](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.3.2)，上传 0.3.2 tarball 与 `SHA256SUMS.txt`；用 `fetchLatestRelease({ force: true })` 复核返回 `0.3.2`，资产名为 `dsh-plugins-model-spokesperson-0.3.2.tgz`。更新检查有五分钟缓存，已打开旧页面的用户需刷新或点击“已是最新”强制重查。
+- 创建 `v0.3.2` tag 和 [GitHub Release](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.3.2)，上传 0.3.2 tarball 与 `SHA256SUMS.txt`；用 `fetchLatestRelease({ force: true })` 复核返回 `0.3.2`，资产名为 `dsh-plugins-model-spokesperson-0.3.2.tgz`；重新下载 Release 资产复核 SHA-256 为 `792e29491d95df65fc1568993e7be5d1d5d3cc153fa4f996639267e9696234cd`。更新检查有五分钟缓存，已打开旧页面的用户需刷新或点击“已是最新”强制重查。
 
 ## 边界
 
