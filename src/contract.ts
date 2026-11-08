@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type {} from '@deepseek-ai/dsh-session-projection/types';
-import { DRAFT_SYSTEM, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from './prompt.ts';
+import { DRAFT_SYSTEM, ENGLISH_REPLY_RULE, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from './prompt.ts';
 
 export const RECORD = 'plugin:model-spokesperson/rewrite' as const;
 export const PROJECTION = 'modelSpokesperson' as const;
@@ -16,6 +16,7 @@ export const SettingsSchema = z.object({
   reviewPrompt: z.string().refine(value => value.trim().length > 0, '核对完善提示词不能为空。').default(REVIEW_SYSTEM),
   translationWorkspaces: z.array(z.string().min(1)).default([]),
   translationTarget: z.string().trim().min(1).max(100).default('中文'),
+  englishPrompt: z.string().refine(value => value.trim().length > 0, 'A 的英文回复要求不能为空。').default(ENGLISH_REPLY_RULE),
   translationPrompt: z.string().refine(value => value.trim().length > 0, '翻译提示词不能为空。').default(TRANSLATE_SYSTEM),
   reviewRounds: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(1),
   timeoutMs: z.number().int().min(0).max(2147483647).default(0),

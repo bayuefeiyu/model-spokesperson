@@ -2,7 +2,7 @@
 
 指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-当前本地开发版本为 Host + Web Client bundle **0.3.1**，目标为 **DeepSeek Harness 0.2.2-rc.1**，不承诺兼容其他版本。本地安装包：`dist/dsh-plugins-model-spokesperson-0.3.1.tgz`；最近公开 Release 仍为 0.2.2，0.2.3/0.2.4/0.3.0/0.3.1 尚未发布 GitHub Release。
+当前本地开发版本为 Host + Web Client bundle **0.3.2**，目标为 **DeepSeek Harness 0.2.2-rc.1**，不承诺兼容其他版本。本地安装包：`dist/dsh-plugins-model-spokesperson-0.3.2.tgz`；最近公开 Release 仍为 0.2.2，0.2.3/0.2.4/0.3.0/0.3.1/0.3.2 尚未发布 GitHub Release。
 
 GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
@@ -22,10 +22,11 @@ GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 从 0.3.0 起，每个项目可以单独选择工作方式；未选择翻译的项目继续使用上面的“独立起草 + 核对”流程。
 
 - 在 **插件 → @dsh-plugins/model-spokesperson → 工作方式（按项目）** 选择项目，勾选 **本项目使用英文底稿和中文翻译**。设置按 DSH 的稳定 workspace 标识保存，同一 profile 下的其他项目不受影响。
-- 勾选后，插件在 A 的系统提示中追加一条英文规则：面向用户的报告、解释、问题用自包含的英文写；文件、界面文案等交付物仍按用户要求的语言。A 的工具调用、执行和原始日志不变。
-- A 正常结束且该步没有工具调用时，B **只收到 A 的这条回复**，按目标语言和表达偏好翻译一次；不读取工作上下文、工具结果、文件内容或历史。翻译请求不含工具，也没有核对轮次。
+- 勾选后，插件在 A 的系统提示中追加 **A 的英文回复要求**：面向用户的聊天回复必须用英文，即使用户用中文提问或要求中文文档；文件、界面文案、代码、路径和引用保留用户要求的语言。这段要求可在设置中编辑并恢复默认。A 的工具调用、执行和原始日志不变。
+- A 正常结束且该步没有工具调用时，B **只收到 A 的这条回复**，按目标语言和翻译提示词翻译一次；不读取工作上下文、工具结果、文件内容或历史。翻译请求不含工具，也没有核对轮次。
+- 翻译方式下不再使用“表达偏好”，也不把它附加到 B 请求；所有翻译和文风要求直接写在翻译提示词中。旧方式仍保留自己的表达偏好，但只在未启用翻译的项目中显示。
 - 前端等待时显示“B 正在翻译…”，完成后在原行显示译文，保留“查看 A 的原文”和“复制 B 回复”。失败、超时、截断、空输出或超限时回退 A 原文；失败行提供手动重试，只额外调用一次 B。
-- 翻译方式下，独立起草提示词、核对提示词和核对轮数仍保留，但界面隐藏；关闭该项目的勾选后恢复旧方式。总开关关闭时 A 直接发言。
+- 翻译方式下，独立起草提示词、核对提示词、核对轮数和旧方式表达偏好仍保留，但界面隐藏；关闭该项目的勾选后恢复旧方式。总开关关闭时 A 直接发言。
 - 完整提示预设（`complete: true`）可能覆盖插件追加的规则。插件会在实际生效的 `system/message` 中核对规则标记；缺失时跳过翻译并显示 A 原文，不额外调用 B。DSH 0.2.2 在 step preparation 后拒绝 `agent/request` 改路由；插件仍保留路由复核，用于兼容允许该改法的旧版或自定义组合。
 - 翻译方式只读取 A 的最终正文，所以同一项目的历史再长也不会进入 B 的翻译输入；但 A 仍需携带完整上下文，真实模型的输出质量、延迟和费用需要按项目抽样验证。
 
@@ -40,7 +41,7 @@ GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 ```powershell
 rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.2.2
 # 也可下载 Release 安装包后使用本地路径：
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.1.tgz
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.2.tgz
 ```
 
 如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。
@@ -49,14 +50,14 @@ rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-
 
 1. 打开 **插件 → @dsh-plugins/model-spokesperson**。
 2. 在“模型与表达”点击 **添加模型映射**，从 DSH 已配置的模型中选择 A（完成工作）和 B（独立作答或翻译）。
-3. 勾选 **开启 B 回复**。如需英文底稿 + 中文翻译，在“工作方式（按项目）”选择项目并勾选 **本项目使用英文底稿和中文翻译**；否则继续使用独立起草 + 核对。按需修改表达偏好、提示词或高级设置，然后点击 **保存设置**。
+3. 勾选 **开启 B 回复**。如需英文底稿 + 中文翻译，在“工作方式（按项目）”选择项目并勾选 **本项目使用英文底稿和中文翻译**；否则继续使用独立起草 + 核对。按需修改英文回复要求、翻译提示词、旧方式提示词或高级设置，然后点击 **保存设置**。
 4. 在聊天输入框选择 A 并开始对话。此处映射不会自动切换会话模型。
 
 界面支持多组映射；同一 provider/model 的 A 只能出现一次。只有保存才写入当前 profile；刷新和重启保留设置，修改对后续回复生效，进行中的整理保留原设置。部分模型暂时不可用时保留已有选择；并发修改会提示冲突，不会直接覆盖。
 
 ### 自定义提示词（0.2.1）
 
-在 **模型与表达 → 提示词设置** 展开并编辑“独立起草提示词”和“核对完善提示词”。两项均预填当前完整默认内容，包含原先共用的职责和事实要求；保存后替换对应阶段全文，不另外附加隐藏的默认正文。上方“表达偏好”仍作为单独一行附在提示词末尾。
+旧方式在 **模型与表达 → 提示词设置** 展开并编辑“独立起草提示词”和“核对完善提示词”。两项均预填当前完整默认内容，包含原先共用的职责和事实要求；保存后替换对应阶段全文，不另外附加隐藏的默认正文。旧方式的“表达偏好”仍作为单独一行附在提示词末尾；翻译方式不使用它。
 
 每项提供“恢复默认”按钮，只修改当前草稿，仍须保存。不能保存空白提示词。编辑、保存和恢复均通过原生 ConfigForm，刷新及重启保留；修改只用于后续回复，进行中的多轮调用使用开始时的提示词快照。
 
@@ -105,7 +106,7 @@ rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-
     maxOutputTokens: 0
 ```
 
-可添加多个 source；每个 source 只能一条规则，B 可与 A 同路由。不在此填写密钥。`translationWorkspaces` 填 DSH workspace id（由设置页选择，不建议手写）；`translationPrompt` 省略时使用内置默认全文，可在设置页编辑。
+可添加多个 source；每个 source 只能一条规则，B 可与 A 同路由。不在此填写密钥。`translationWorkspaces` 填 DSH workspace id（由设置页选择，不建议手写）；`englishPrompt` 省略时使用内置的 A 英文回复要求，`translationPrompt` 省略时使用内置翻译全文，两者都可在设置页编辑。`style` 仅用于未启用翻译的旧方式。
 
 - `reviewRounds: 1` 表示独立起草 + 一轮核对；设为 0 时只起草，始终不向 B 提供 A 本次报告。多轮核对都基于 B 上一稿继续完善。翻译方式不使用该值，固定为一次翻译。
 - `translationWorkspaces` 中列出的项目使用英文底稿 + 单次翻译；其他项目保持旧方式。该值由设置页按 workspace id 写入。
@@ -146,7 +147,9 @@ rtk proxy npm run pack:plugin
 
 0.3.0 增加按项目的“英文底稿 + 单次中文翻译”。A 的系统提示注入英文规则；翻译分支不采集、传输或持久化工作材料，B 只收到 A 的最终正文并调用一次。完整提示预设和路由变化会跳过翻译并记录原因。
 
-0.3.1 将目标升级到 DSH **0.2.2-rc.1**：SDK 依赖、Cordis 4.1.0、Cosmokit 1.9.0、Schemastery 3.19.0 同步更新；`sessionProjections.register` 改为 awaited handle，路由切换测试改用 `agent.model.select()`（0.2.2 在 step preparation 后拒绝 `agent/request` 改路由）。类型检查、69 项测试、构建和打包通过；真实 A/B 的英文遵循率、译文质量和费用仍需按项目抽样，浏览器端项目选择和真实翻译流程尚未做隔离 Web 验收。
+0.3.1 将目标升级到 DSH **0.2.2-rc.1**：SDK 依赖、Cordis 4.1.0、Cosmokit 1.9.0、Schemastery 3.19.0 同步更新；`sessionProjections.register` 改为 awaited handle，路由切换测试改用 `agent.model.select()`（0.2.2 在 step preparation 后拒绝 `agent/request` 改路由）。
+
+0.3.2 将 A 的英文回复要求开放为可编辑设置（`englishPrompt`，可恢复默认），并在默认规则中明确“即使用户用中文提问，聊天回复也必须英文；文件/文档/UI 文案保留用户要求的语言”。翻译方式不再使用或附加旧“表达偏好”，所有翻译和文风要求写入 `translationPrompt`；旧方式仍保留自己的表达偏好。类型检查、70 项测试、构建和打包通过；真实 A/B 的英文遵循率、译文质量和费用仍需按项目抽样，浏览器端项目选择和真实翻译流程尚未做隔离 Web 验收。
 
 工作上下文来自当时有效的会话消息；若宿主已压缩历史，只能提供保留下来的材料。A 本次调用中新产生且未写入先前记录的结论，第一步 B 无法获知，第二步只能把 A 报告作为参考核查。附件本身不直接读取，B 只获得不可见标记和 A 已实际读取的记录。
 

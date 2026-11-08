@@ -22,7 +22,7 @@ Host/Client 分别检查类型，避免两端 Context.sessions 合并。测试�
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/inspect-runtime.py --installation "G:\ai\harness\dsh desktop" --output evidence/runtime-inspection.json
 rtk proxy "G:\ai\harness\dsh desktop\resources\runtime\primary-runtime\dependencies\python\python.exe" scripts/prepare-runtime.py
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --from-default-profile web --dump-config
-rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.1.tgz
+rtk proxy node scripts/dev-cli.mjs plugin --profile spokesperson-dev add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.2.tgz
 rtk proxy node scripts/prepare-demo.mjs
 rtk proxy node scripts/dev-cli.mjs --profile spokesperson-dev --port 31947 --no-open
 ```
@@ -73,4 +73,4 @@ rc.3 Client 模块表不公开 dsh-typert-protocol/remote-info；build 显式打
 
 0.2.4 安装本地包后，用 `rtk proxy node scripts/browser-input-limit.mjs LOCAL_URL` 在隔离 profile 验证输入上限：原生设置保存 1000、请求材料超限且不调用 B、点击重试返回明确预算提示、保存为 0 后仅调用 B 起草/核对、刷新不重复调用。输出 evidence/input-limit-browser.json 和 input-limit.png。超限可能在 A 的 driver 最后清理前即时显示，脚本等 500ms 再点击；若 A 仍忙，Host 的等待提示是正常保护。
 
-0.3.0 的自动测试已覆盖项目开关、A 规则注入、翻译输入隔离、工具直通、完整提示预设、`agent.model.select()` 路由切换、翻译重试、预算和恢复。0.3.1 在 DSH 0.2.2-rc.1 上重新通过 69 项测试；`sessionProjections.register` 改为 awaited handle，`agent/request` 改路由测试已改为 `agent.model.select()`。安装 0.3.1 构建产物后，在隔离 profile 打开插件设置，选择项目并勾选翻译，验证保存后下一条 A 回复先写英文、B 只调用一次、原行显示译文；再关闭项目翻译，确认恢复独立起草 + 核对。刷新和重启不重复调用。真实模型抽样需单独记录模型、输入量、延迟、费用和失败例。
+0.3.0 的自动测试已覆盖项目开关、A 规则注入、翻译输入隔离、工具直通、完整提示预设、`agent.model.select()` 路由切换、翻译重试、预算和恢复。0.3.1 在 DSH 0.2.2-rc.1 上重新通过 70 项测试；`sessionProjections.register` 改为 awaited handle，`agent/request` 改路由测试已改为 `agent.model.select()`。0.3.2 把 A 的英文规则开放为“A 的英文回复要求”编辑框，并移除翻译方式的“表达偏好”；真实模型复测时先确认 A 可见正文为英文，再检查 B 译文。安装 0.3.2 构建产物后，在隔离 profile 打开插件设置，选择项目并勾选翻译，验证保存后下一条 A 回复先写英文、B 只调用一次、原行显示译文；再关闭项目翻译，确认恢复独立起草 + 核对。刷新和重启不重复调用。真实模型抽样需单独记录模型、输入量、延迟、费用和失败例。

@@ -61,3 +61,9 @@ draftPrompt/reviewPrompt 各自保存完整提示词，包含此前共用的 COM
 工作方式按 DSH workspace id 保存在现有配置中，未列出的项目继续使用独立起草 + 核对。A 的英文规则通过 `system-prompt/assemble` 追加，不修改冻结请求；翻译 attempt 不采集工作材料，B 只收到 A 最终正文并调用一次。设置页在没有活动 workspace 时提供项目选择器，而不是把项目写进 `AGENTS.md` 或使用路径字符串。
 
 完整提示预设可以覆盖追加 section，因此 Host 在 A 结束后检查实际生效的 `system/message` 标记；缺失时跳过 B 并记录原因。`agent/request` 的最终路由与组装记录不一致时同样跳过，防止把其他模型误译；DSH 0.2.2 会在 step preparation 后拒绝该改法，要求先 `agent.model.select()`，因此该检查主要保留给旧版或允许改路由的组合。翻译记录使用 `policyVersion/promptVersion: 3` 和 `translate` 阶段，旧记录读取与手动重试保持兼容；真实模型遵循率和译文质量仍靠抽样验收，不由结构检查证明。
+
+## D014 英文规则的指令遵循与可编辑提示（2026-11-08）
+
+实际会话中 A 的系统提示已包含 `model-spokesperson:english-reply` 标记，但 A 的可见正文仍是中文；其推理明确写了“Respond concisely in Chinese”。因此不是规则未注入，而是模型遵循问题，且原规则中的“按交付物语言”被误读为聊天回复也可以中文。默认规则改为明确覆盖用户中文输入：聊天回复必须英文，文件/文档/UI 文案等交付物仍按用户要求；同时把整段规则开放为 `englishPrompt` 设置，允许用户按模型调整。
+
+翻译方式不再读取或附加旧 `style`；所有翻译与文风要求写入 `translationPrompt`。旧方式的 `style` 保留在配置和旧方式界面，只在未启用翻译的项目显示，避免破坏旧流程。

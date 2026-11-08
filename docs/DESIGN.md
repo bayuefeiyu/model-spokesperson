@@ -1,6 +1,6 @@
 # 实现设计
 
-当前本地开发版本 0.3.1，目标 DSH 0.2.2-rc.1。独立报告流程验收见 `evidence/report-validation.md`，提示词设置见 `evidence/prompt-validation.md`，重试见 `evidence/retry-validation.md`，输入超限反馈见 `evidence/input-limit-validation.md`，一键更新见 `evidence/update-validation.md`，按项目翻译见 `evidence/translation-validation.md`；其他旧版本证据按其版本保留。
+当前本地开发版本 0.3.2，目标 DSH 0.2.2-rc.1。独立报告流程验收见 `evidence/report-validation.md`，提示词设置见 `evidence/prompt-validation.md`，重试见 `evidence/retry-validation.md`，输入超限反馈见 `evidence/input-limit-validation.md`，一键更新见 `evidence/update-validation.md`，按项目翻译见 `evidence/translation-validation.md`；其他旧版本证据按其版本保留。
 
 ```text
 用户 → A 的正常 AgentLoop → 原始助手消息/工具事件 → 原会话日志
@@ -30,11 +30,11 @@ B 第一请求只有 userQuestion/workContext，没有 A 本次报告。第一�
 
 ## 英文底稿 + 单次翻译（0.3.0）
 
-工作方式按项目选择，保存的是 DSH workspace id（`translationWorkspaces`）。Host 在 `system-prompt/assemble` 的 `{ global: true, prepend: true }` 外层监听器中先 `await next()`，用最终 `variables.provider/model` 与精确 A 映射匹配，再用 `workspaceRegistry.resolveByPath(session.header.cwd)` 校验项目。匹配时在 sections 末尾追加插件专属 section `model-spokesperson:english-reply`，保留其他 sections/tools/contexts/variables，并去掉自身旧 section。该 section 为 `interpolate: false`，不依赖用户变量。
+工作方式按项目选择，保存的是 DSH workspace id（`translationWorkspaces`）。Host 在 `system-prompt/assemble` 的 `{ global: true, prepend: true }` 外层监听器中先 `await next()`，用最终 `variables.provider/model` 与精确 A 映射匹配，再用 `workspaceRegistry.resolveByPath(session.header.cwd)` 校验项目。匹配时在 sections 末尾追加插件专属 section `model-spokesperson:english-reply`，其正文来自可编辑的 `englishPrompt`（默认明确要求“即使用户用中文提问，聊天回复也必须用英文；文件/界面文案等交付物保留用户要求的语言”）。保留其他 sections/tools/contexts/variables，并去掉自身旧 section；该 section 为 `interpolate: false`，不依赖用户变量。
 
 `agent/request` 在 `next()` 得到最终调用配置后记录本 turn/step 的翻译开关与路由；`assistant-stream start` 再对照实际 `requestHeader().config`，发现不一致时跳过翻译并记录 `translation-route-changed`。DSH 0.2.2 会在 step preparation 后拒绝 `agent/request` 改路由（要求先 `agent.model.select()`），因此该分支主要保留给旧版或允许该改法的自定义组合；0.2.2 的模型切换通过 `agent.model.select()` 在下一步生效，并由同一组装/路由检查覆盖。翻译 attempt 在创建时即走单独分支：不调用 `deriveMessages()` 或 `captureWorkContext()`，不保存 `context`。A 正常结束、无工具、非空且非纯代码/JSON 后，Host 读取当前生效的 `system/message` surface 节点，确认英文规则标记仍存在；若被 `complete: true` 预设覆盖，记录 `translation-rule-missing` 并回退 A 原文，不调用 B。
 
-翻译调用使用 B 路由的 `ctx.llm.stream`，`tools: []`，system 为翻译提示词 + 目标语言 + 表达偏好，user 消息只有 A 正文。成功保存一个 `kind: 'translate'` 阶段、原消息身份/原文/hash、目标语言和独立 usage；记录 `policyVersion/promptVersion: 3`，不按核对轮数计算。失败、超时、截断、空输出或输入超限沿用回退；手动重试使用当前翻译设置，只额外调用一次 B，不需要旧工作材料。恢复只接受完整成功翻译阶段；旧版 v1/v2 记录继续按原规则读取。
+翻译调用使用 B 路由的 `ctx.llm.stream`，`tools: []`，system 为翻译提示词 + 目标语言；翻译方式不再读取或附加旧 `style`，所有文风要求写入 `translationPrompt`。user 消息只有 A 正文。成功保存一个 `kind: 'translate'` 阶段、原消息身份/原文/hash、目标语言和独立 usage；记录 `policyVersion/promptVersion: 3`，不按核对轮数计算。失败、超时、截断、空输出或输入超限沿用回退；手动重试使用当前翻译设置，只额外调用一次 B，不需要旧工作材料。恢复只接受完整成功翻译阶段；旧版 v1/v2 记录继续按原规则读取。
 
 ## 手动重试（0.2.2）
 

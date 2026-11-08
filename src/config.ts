@@ -3,7 +3,7 @@ import { isVolatile } from '@deepseek-ai/cosmokit';
 import type { Volatile } from '@deepseek-ai/cosmokit';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { SettingsSchema, type Settings } from './contract.ts';
-import { DRAFT_SYSTEM, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from './prompt.ts';
+import { DRAFT_SYSTEM, ENGLISH_REPLY_RULE, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from './prompt.ts';
 
 export type RuntimeSettings = Partial<{ [K in keyof Settings]: Settings[K] | Volatile<Settings[K]> }>;
 export function readSettings(raw: RuntimeSettings): Settings {
@@ -18,6 +18,7 @@ export const Config = schema.object({
   reviewPrompt: schema.string().default(REVIEW_SYSTEM).volatile(),
   translationWorkspaces: schema.array(schema.string().min(1)).default([]).volatile(),
   translationTarget: schema.string().default('中文').volatile(),
+  englishPrompt: schema.string().default(ENGLISH_REPLY_RULE).volatile(),
   translationPrompt: schema.string().default(TRANSLATE_SYSTEM).volatile(),
   reviewRounds: schema.natural().max(Number.MAX_SAFE_INTEGER).default(1).volatile(),
   timeoutMs: schema.natural().max(2147483647).default(0).volatile(),

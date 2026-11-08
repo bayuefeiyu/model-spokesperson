@@ -7,7 +7,7 @@ import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types
 import { SettingsView } from '../src/settings-view.tsx';
 import { SettingsSchema, type Settings } from '../src/contract.ts';
 import { Config, readSettings } from '../src/config.ts';
-import { DRAFT_SYSTEM, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from '../src/prompt.ts';
+import { DRAFT_SYSTEM, ENGLISH_REPLY_RULE, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from '../src/prompt.ts';
 import type { WorkspaceListModel } from '../src/workspace-client.ts';
 
 const rule = { source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } };
@@ -40,12 +40,13 @@ test('native Config refs preserve cross-field validation and serialize editable 
   const good = await Config['~standard'].validate({enabled:true,rules:[rule]});
   assert.ok(!good.issues);
   assert.equal(readSettings(good.value as Parameters<typeof readSettings>[0]).enabled,true);
-  for (const candidate of [{enabled:true,rules:[]},{enabled:true,rules:[rule,rule]},{draftPrompt:' \n '},{reviewPrompt:''},{translationTarget:' '},{translationPrompt:'  '},{translationWorkspaces:['a','a']}]) {
+  for (const candidate of [{enabled:true,rules:[]},{enabled:true,rules:[rule,rule]},{draftPrompt:' \n '},{reviewPrompt:''},{translationTarget:' '},{englishPrompt:'  '},{translationPrompt:'  '},{translationWorkspaces:['a','a']}]) {
     const bad=await Config['~standard'].validate(candidate);
     assert.ok(bad.issues?.length);
   }
   assert.equal(Config.dict!.rules.meta.volatile,true);
   assert.equal(Config.dict!.translationWorkspaces.meta.volatile,true);
+  assert.equal(Config.dict!.englishPrompt.meta.volatile,true);
   const translated = await Config['~standard'].validate({ enabled:true, rules:[rule], translationWorkspaces:['ws-1'], translationTarget:'日文', translationPrompt:'自定义翻译' });
   assert.ok(!translated.issues);
 });
@@ -134,22 +135,28 @@ test('translation mode is configured per project and hides legacy prompt fields'
   assert.equal(view!.root.findByProps({ 'aria-label': '项目' }).props.value, 'ws-1');
   assert.equal(view!.root.findAllByProps({ 'aria-label': '翻译目标语言' }).length, 0);
   assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 1);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '表达偏好' }).length, 1);
   act(() => view!.root.findByProps({ 'aria-label': '本项目使用英文底稿和中文翻译' }).props.onChange({ target: { checked: true } }));
   assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 0);
   assert.equal(view!.root.findAllByProps({ 'aria-label': '核对轮数' }).length, 0);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '表达偏好' }).length, 0);
   assert.equal(view!.root.findByProps({ 'aria-label': '翻译目标语言' }).props.value, '中文');
+  assert.equal(view!.root.findByProps({ 'aria-label': 'A 的英文回复要求' }).props.value, ENGLISH_REPLY_RULE);
   assert.equal(view!.root.findByProps({ 'aria-label': '翻译提示词' }).props.value, TRANSLATE_SYSTEM);
   act(() => view!.root.findByProps({ 'aria-label': '翻译目标语言' }).props.onChange({ target: { value: '日文' } }));
+  act(() => view!.root.findByProps({ 'aria-label': 'A 的英文回复要求' }).props.onChange({ target: { value: '自定义英文要求' } }));
   act(() => view!.root.findByProps({ 'aria-label': '翻译提示词' }).props.onChange({ target: { value: '自定义翻译要求' } }));
   assert.equal(f.calls.length, 0);
   await act(async () => { view!.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
   assert.deepEqual(f.calls[0].ops, [
     { op: 'set', path: ['translationWorkspaces'], value: ['ws-1'] },
     { op: 'set', path: ['translationTarget'], value: '日文' },
+    { op: 'set', path: ['englishPrompt'], value: '自定义英文要求' },
     { op: 'set', path: ['translationPrompt'], value: '自定义翻译要求' },
   ]);
   act(() => view!.root.findByProps({ 'aria-label': '项目' }).props.onChange({ target: { value: 'ws-2' } }));
   assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 1);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '表达偏好' }).length, 1);
   assert.equal(view!.root.findAllByProps({ 'aria-label': '翻译目标语言' }).length, 0);
   view!.unmount();
 });

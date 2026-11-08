@@ -18,7 +18,7 @@
 ## 实际检查
 
 - `rtk proxy npm run check`：Host/Client 类型检查通过。
-- `rtk proxy npm test`：**69/69 通过**（DSH 0.2.2-rc.1）。
+- `rtk proxy npm test`：**70/70 通过**（DSH 0.2.2-rc.1）。
 - `rtk proxy npm run build`：Host ESM + Client module-loader 构建通过。
 - `rtk proxy npm run pack:plugin`：生成 `dist/dsh-plugins-model-spokesperson-0.3.1.tgz`，101,479 字节。
 - SHA-256：`643db1dd54152b02a9eb6e928c90ce65ae9bc5bf252f6900b4abdf98707c3401`，已写入 `dist/SHA256SUMS.txt`。

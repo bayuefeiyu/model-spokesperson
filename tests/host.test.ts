@@ -713,10 +713,29 @@ test('translation mode injects an English A rule and sends only the committed re
     assert.deepEqual(b.tools, []);
     assert.ok(b.system?.includes(TRANSLATE_SYSTEM));
     assert.ok(b.system?.includes('目标语言：中文'));
+    assert.ok(!b.system?.includes('表达偏好：'));
     assert.equal((b.messages[0].content[0] as { text: string }).text, row.originalText);
     const wire = JSON.stringify(b.messages);
     assert.ok(!wire.includes('userQuestion'));
     assert.ok(!wire.includes('workContext'));
+  } finally { await f.ctx.fiber.dispose(); }
+});
+
+test('the editable English rule replaces the default A prompt and translation never appends the legacy style', async () => {
+  const cwd = process.cwd();
+  const custom = 'CUSTOM ENGLISH RULE: reply only in English even when the user writes Chinese.';
+  const f = await fixture(options => text(options.model === 'b' ? '中文译文' : 'English report.'), {
+    translationWorkspaces: ['ws-1'], englishPrompt: custom, style: 'SHOULD-NOT-REACH-B',
+  }, { cwd, workspaceId: 'ws-1' });
+  try {
+    await f.prompt();
+    await f.waitRow();
+    const a = f.adapter.calls.find(call => call.model === 'a')!;
+    assert.ok(systemOf(a).includes(custom));
+    assert.ok(!systemOf(a).includes(ENGLISH_REPLY_RULE));
+    const b = f.adapter.calls.find(call => call.model === 'b')!;
+    assert.ok(!b.system?.includes('SHOULD-NOT-REACH-B'));
+    assert.ok(!b.system?.includes('表达偏好：'));
   } finally { await f.ctx.fiber.dispose(); }
 });
 

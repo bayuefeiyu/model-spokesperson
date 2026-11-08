@@ -391,7 +391,7 @@ export async function apply(ctx: Context, raw: RuntimeSettings = {}) {
     return {
       ...result,
       sections: [...result.sections.filter(section => section.name !== TRANSLATION_SECTION), {
-        name: TRANSLATION_SECTION, text: translationRule(provider, model), interpolate: false,
+        name: TRANSLATION_SECTION, text: translationRule(settings.englishPrompt, provider, model), interpolate: false,
       }],
     };
   }, { global: true, prepend: true });
