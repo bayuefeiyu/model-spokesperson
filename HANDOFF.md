@@ -1,6 +1,6 @@
 # 开发交接
 
-2026-11-08：本地开发版本升为 0.3.2。实际会话确认 A 的系统提示已包含英文规则标记，但 A 的可见正文仍是中文，推理明确写了“Respond concisely in Chinese”；因此不是注入缺失，而是指令遵循问题。默认英文规则改为明确覆盖用户中文输入，并把整段规则开放为 `englishPrompt` 设置；翻译方式不再读取/附加旧 `style`，文风要求全部写入 `translationPrompt`。70 项测试、类型检查和构建通过；0.3.1 的 DSH 0.2.2 适配与 0.3.0 功能说明保留如下。
+2026-11-08：本地开发版本升为 0.3.2，并已创建 tag 与 GitHub Release `v0.3.2`（tarball + `SHA256SUMS.txt`）。实际会话确认 A 的系统提示已包含英文规则标记，但 A 的可见正文仍是中文，推理明确写了“Respond concisely in Chinese”；因此不是注入缺失，而是指令遵循问题。默认英文规则改为明确覆盖用户中文输入，并把整段规则开放为 `englishPrompt` 设置；翻译方式不再读取/附加旧 `style`，文风要求全部写入 `translationPrompt`。70 项测试、类型检查和构建通过；0.3.1 的 DSH 0.2.2 适配与 0.3.0 功能说明保留如下。
 
 2026-11-07：版本 0.3.1，适配 DSH 0.2.2-rc.1。SDK、Cordis、Cosmokit、Schemastery 同步升级；`sessionProjections.register` 改为 awaited handle；路由切换测试改用 `agent.model.select()`，因为 0.2.2 在 step preparation 后拒绝 `agent/request` 改路由。70 项测试、类型检查和构建通过。0.3.0 的翻译功能说明保留如下。
 

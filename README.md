@@ -2,7 +2,7 @@
 
 指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-当前本地开发版本为 Host + Web Client bundle **0.3.2**，目标为 **DeepSeek Harness 0.2.2-rc.1**，不承诺兼容其他版本。本地安装包：`dist/dsh-plugins-model-spokesperson-0.3.2.tgz`；最近公开 Release 仍为 0.2.2，0.2.3/0.2.4/0.3.0/0.3.1/0.3.2 尚未发布 GitHub Release。
+当前本地开发版本为 Host + Web Client bundle **0.3.2**，目标为 **DeepSeek Harness 0.2.2-rc.1**，不承诺兼容其他版本。本地安装包：`dist/dsh-plugins-model-spokesperson-0.3.2.tgz`；最新公开 Release 为 [v0.3.2](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.3.2)，包含 tarball 和 `SHA256SUMS.txt`。
 
 GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
@@ -36,10 +36,10 @@ GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 
 使用目标 DSH 安装自带的 CLI 安装到指定 profile（`dsh` 代表该 CLI；本机 shell 使用 RTK）：
 
-在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.2.2`（最近公开 Release；0.2.3 发布后可用 `#v0.2.3`）。公开仓库不需要 GitHub 登录。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
+在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.3.2`（最新公开 Release）。公开仓库不需要 GitHub 登录。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
 
 ```powershell
-rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.2.2
+rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.3.2
 # 也可下载 Release 安装包后使用本地路径：
 rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.2.tgz
 ```
