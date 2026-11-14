@@ -10,6 +10,7 @@ test('minified registrants, authorized child delegation, late declarations and u
   const core = new SlotCore();
   const register = core.register as unknown as (options: Record<string, unknown>, component: React.ComponentType<Record<string, unknown>>) => () => void;
   const cleanups: (() => void)[] = [];
+  const dependencies: string[][] = [];
   const slots = {
     entries: core.entries.bind(core), subscribe: core.subscribe.bind(core),
     register(options: Record<string, unknown>, component: React.ComponentType<Record<string, unknown>>) {
@@ -17,7 +18,8 @@ test('minified registrants, authorized child delegation, late declarations and u
       return register.call(core, options, component);
     },
   };
-  apply({ slots, inject: () => {}, effect: (fn: () => () => void) => { const undo = fn(); cleanups.push(undo); return undo; } } as unknown as Context);
+  apply({ slots, inject: (names: string[]) => { dependencies.push(names); }, effect: (fn: () => () => void) => { const undo = fn(); cleanups.push(undo); return undo; } } as unknown as Context);
+  assert.ok(dependencies.some(names => names.includes('configForms') && names.includes('workspaces')), 'project settings must wait for the workspace service');
   const root = register.call(core, { name: 'root', children: { 'conversation.chat.node': { kind: 'keyed', scope: 'session' } } }, () => null);
   const Default = (p: Record<string, unknown>) => <>{(p.renderSlot as (name: string) => React.ReactNode)('conversation.chat.reasoning.body')}{(p.renderSlot as (name: string) => React.ReactNode)('conversation.chat.message.images')}</>;
   const original = register.call(core, { name: 'conversation.chat.node', key: 'assistant-step', registrant: 'Gb', children: {

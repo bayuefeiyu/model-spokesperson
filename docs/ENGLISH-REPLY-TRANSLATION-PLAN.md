@@ -72,6 +72,8 @@ B 提示草案：
 
 ## 实施记录（2026-11-07）
 
+2026-11-14 继续验收，发现并修复真实 Web 中缺少项目选择器的加载时机问题，本地版本 0.3.3。设置挂载现在等待工作区服务，分发清单显式声明工作区 Client 依赖。构建产物安装后的浏览器验收结果见 [翻译浏览器记录](../evidence/translation-browser.json)。
+
 已按本方案完成 0.3.0 本地实现。实际选择：
 
 - 设置保存 `translationWorkspaces`（workspace id）、`translationTarget` 和 `translationPrompt`；设置页通过 Client 的 `workspaces` 投影列出项目，没有活动项目时要求先选择。

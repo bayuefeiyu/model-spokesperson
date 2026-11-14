@@ -2,7 +2,7 @@
 
 指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-当前本地开发版本为 Host + Web Client bundle **0.3.2**，目标为 **DeepSeek Harness 0.2.2-rc.1**，不承诺兼容其他版本。本地安装包：`dist/dsh-plugins-model-spokesperson-0.3.2.tgz`；最新公开 Release 为 [v0.3.2](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.3.2)，包含 tarball 和 `SHA256SUMS.txt`。
+当前本地开发版本为 Host + Web Client bundle **0.3.3**，目标为 **DeepSeek Harness 0.2.2-rc.1**。本地安装包为 `dist/dsh-plugins-model-spokesperson-0.3.3.tgz`。0.3.3 修复项目选择器的工作区服务加载时机，并完成实际构建包的隔离 Web 翻译验收。已有公开版本参考 [v0.3.2](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.3.2)。
 
 GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
@@ -41,7 +41,7 @@ GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 ```powershell
 rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.3.2
 # 也可下载 Release 安装包后使用本地路径：
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.2.tgz
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.3.tgz
 ```
 
 如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。
@@ -149,7 +149,7 @@ rtk proxy npm run pack:plugin
 
 0.3.1 将目标升级到 DSH **0.2.2-rc.1**：SDK 依赖、Cordis 4.1.0、Cosmokit 1.9.0、Schemastery 3.19.0 同步更新；`sessionProjections.register` 改为 awaited handle，路由切换测试改用 `agent.model.select()`（0.2.2 在 step preparation 后拒绝 `agent/request` 改路由）。
 
-0.3.2 将 A 的英文回复要求开放为可编辑设置（`englishPrompt`，可恢复默认），并在默认规则中明确“即使用户用中文提问，聊天回复也必须英文；文件/文档/UI 文案保留用户要求的语言”。翻译方式不再使用或附加旧“表达偏好”，所有翻译和文风要求写入 `translationPrompt`；旧方式仍保留自己的表达偏好。类型检查、70 项测试、构建和打包通过；真实 A/B 的英文遵循率、译文质量和费用仍需按项目抽样，浏览器端项目选择和真实翻译流程尚未做隔离 Web 验收。
+0.3.2 将 A 的英文回复要求开放为可编辑设置（`englishPrompt`，可恢复默认），翻译和文风要求写入 `translationPrompt`。0.3.3 修复真实 Web 中项目选择器缺失的服务依赖问题，补齐原生设置保存、项目翻译、单次 B 输入、原文入口、刷新回放和旧流程恢复的浏览器验收。结果见 [翻译浏览器检查](evidence/translation-browser.json)。真实 A/B 的英文遵循率、译文质量和费用仍需按项目抽样。
 
 工作上下文来自当时有效的会话消息；若宿主已压缩历史，只能提供保留下来的材料。A 本次调用中新产生且未写入先前记录的结论，第一步 B 无法获知，第二步只能把 A 报告作为参考核查。附件本身不直接读取，B 只获得不可见标记和 A 已实际读取的记录。
 

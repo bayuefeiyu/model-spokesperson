@@ -6,8 +6,10 @@ const profileName = process.argv[2] ?? 'spokesperson-dev';
 if (!/^[a-zA-Z0-9_-]+$/.test(profileName)) throw new Error('Invalid test profile name');
 const profile = resolve(root, '.dev/runtime/spokesperson-home/profiles', profileName);
 const emptySettings = process.argv.includes('--empty-settings');
+const translationDemo = process.argv.includes('--translation');
+const mockName = translationDemo ? 'spokesperson-translation-mock.mjs' : 'spokesperson-mock.mjs';
 await mkdir(profile, { recursive: true });
-await writeFile(resolve(runtime, 'spokesperson-mock.mjs'), `
+await writeFile(resolve(runtime, mockName), `
 import { LlmAdapter, isAgentLoopRequest } from '@deepseek-ai/dsh-llm';
 import { appendFile, readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -20,7 +22,9 @@ export function apply(ctx) {
       await appendFile(${JSON.stringify(resolve(root, '.dev/workspace/calls.jsonl'))}, JSON.stringify({model:options.model,loop:isAgentLoopRequest(options),purpose:options.purpose ?? null,messages:options.messages,system:options.system,maxTokens:options.maxTokens})+'\\n');
       if (options.model === 'b') {
         await delay(1000,undefined,{signal:options.signal});
-        const data = JSON.parse(options.messages[0].content[0].text);
+        const input = options.messages[0].content[0].text;
+        const translating = ${translationDemo} && options.system?.includes('目标语言：');
+        const data = translating ? { userQuestion: input } : JSON.parse(input);
         if ((data.userQuestion.includes('retry-review-once') && data.reviewRound===1 && data.ownDraft) || (data.userQuestion.includes('retry-draft-once') && !data.ownDraft)) {
           const count = (await readFile(${JSON.stringify(resolve(root, '.dev/workspace/calls.jsonl'))},'utf8')).trim().split(String.fromCharCode(10)).filter(line => {
             try { const call=JSON.parse(line); if(call.model!=='b')return false; const input=JSON.parse(call.messages[0].content[0].text); return input.userQuestion===data.userQuestion && input.reviewRound===data.reviewRound && !!input.ownDraft===!!data.ownDraft; } catch { return false; }
@@ -28,10 +32,11 @@ export function apply(ctx) {
           if (count===1) throw new Error('mock transient failure');
         }
         if (data.userQuestion.includes('fail') && (!data.userQuestion.includes('review-fail') || data.ownDraft)) throw new Error('mock failure');
-        yield {type:'text-delta',index:0,text:'建议采用第一种实现。'};
+        yield {type:'text-delta',index:0,text:translating ? '建议采用第一种实现。键盘导航还需要测试。' : '建议采用第一种实现。'};
       } else {
         yield {type:'reasoning-delta',index:0,text:'只供验证的思考。'};
-        yield {type:'text-delta',index:1,text:options.model === 'c' ? 'C 自己的回答。' : '针对当前事项，综合考量后建议采用第一种实现。'};
+        const english = ${translationDemo} && options.messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('[model-spokesperson:english-reply]'));
+        yield {type:'text-delta',index:1,text:options.model === 'c' ? 'C 自己的回答。' : english ? 'I recommend option one. Keyboard navigation still needs testing.' : '针对当前事项，综合考量后建议采用第一种实现。'};
         await delay(250,undefined,{signal:options.signal});
       }
       yield {type:'usage',usage:{inputTokens:20,outputTokens:10}};
@@ -41,7 +46,7 @@ export function apply(ctx) {
   ctx.llm.registerAdapter(['spokesperson-mock'],new Mock());
 }
 `);
-const mock = resolve(runtime, 'spokesperson-mock.mjs').replaceAll('\\', '/');
+const mock = resolve(runtime, mockName).replaceAll('\\', '/');
 if (process.argv.includes('--mock-only')) { console.log('Prepared API-free mock module; existing profile preserved.'); process.exit(0); }
 const hostSettings = emptySettings ? '    enabled: false\n    rules: []' : `    enabled: true
     rules:

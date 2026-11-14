@@ -23,6 +23,7 @@ test('the GitHub repository root is a ready-to-load DSH bundle without build lif
     assert.ok((await stat(entryPath)).isFile(), 'committed distribution must include '+entryPath);
   }
   const ui = JSON.parse(await readFile(resolve(root, 'packages/ui/package.json'), 'utf8'));
+  assert.ok(ui.dsh.client.inject.includes('@deepseek-ai/dsh-api-workspace-controller'), 'project settings require the workspace Client service before mounting');
   const client = resolve(root, 'packages/ui', ui.exports['./client']);
   const source = await readFile(client, 'utf8');
   assert.ok(source.includes('window.__ModuleLoader__.load'));

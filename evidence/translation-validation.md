@@ -1,4 +1,6 @@
-# 0.3.0 / 0.3.1 / 0.3.2 按项目英文底稿与单次翻译
+# 按项目英文底稿与单次翻译
+
+2026-11-14 补充验收，本地版本 0.3.3，DSH 0.2.2-rc.1。实际构建包安装到隔离 profile `spokesperson-translation`，使用独立翻译 mock 和端口 31957。首次浏览器验收复现设置页缺少项目选择器，修复 Client 的 `workspaces` 服务等待及 UI manifest 的 workspace-controller 依赖后，通过 [浏览器检查](translation-browser.json)。检查包含原生 ConfigForm 保存、刷新恢复自定义提示词、A 实际请求中的英文规则、B 一次调用且用户输入严格等于 A 正文、原行中文显示和原文展开、刷新无新增调用，以及关闭项目翻译恢复旧流程。截图见 translation-browser.png。70 项自动测试、Host/Client 类型检查通过，安装包见 dist/dsh-plugins-model-spokesperson-0.3.3.tgz。下述旧版本记录保留作为历史。
 
 日期：2026-11-07。0.3.0 在 DSH 0.2.1-rc.3 实现；0.3.1 在 DSH 0.2.2-rc.1 重新验证，迁移细节见 [0.2.2 适配记录](dsh-0.2.2-compat.md)。基线为本地 0.2.4 工作区。
 
@@ -31,7 +33,11 @@
 
 ## 边界
 
+0.3.3 的进程重启检查也已通过，项目开关与自定义翻译提示词恢复，重新发送后仍为 A 一次、B 翻译一次，回放没有新增调用。结果见 [重启验收](translation-browser-restart.json)。
+
+最终本地安装包为 dist/dsh-plugins-model-spokesperson-0.3.3.tgz，103612 字节，SHA-256 为 `22f255addb4aa0e8bce5bac816cdda6b2204a9eb5ec75f90f316ddae28880d1b`。浏览器验收后最终打包只更新使用说明，Host/Client 运行代码与已安装验收版本相同。测试服务已停止，0.3.3 尚未发布。
+
 - 没有调用真实收费 A/B 模型；真实英文遵循率、译文质量、目标语言正确性、延迟和 token 费用未验收。
-- 没有在隔离 Web profile 实际点击项目选择器并跑真实翻译；设置页和聊天行由 React/ConfigForm 测试覆盖，浏览器流程待补。
+- 0.3.3 已完成隔离 Web 中实际点击项目选择器和翻译消息的端到端验收。A/B 使用模拟 adapter，模型指令遵循与语义质量仍需真实模型抽样。
 - 完整提示预设的“跳过翻译”只能防止误译，不能撤回已注入的英文规则；A 可能仍输出英文，此时显示 A 原文。DSH 0.2.2 会在 step preparation 后拒绝 `agent/request` 改路由，要求先 `agent.model.select()`；插件保留路由复核仅用于兼容旧版/允许该改法的组合。
 - 翻译输入只有 A 正文，但 A 自身仍携带项目工作上下文；工具结果、文件内容不会发送给 B。

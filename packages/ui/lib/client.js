@@ -1092,7 +1092,7 @@ var children = {
   "conversation.chat.message.images": "model-spokesperson.message.images"
 };
 function apply(ctx) {
-  ctx.inject(["configForms", "remote", "remote.session"], mountSettings);
+  ctx.inject(["configForms", "remote", "remote.session", "workspaces"], mountSettings);
   ctx.inject(["remote", "remote.pluginManager"], mountUpdateAction);
   ctx.inject(["remote"], (child) => {
     child.effect(() => child.remote.$mount(RETRY_REMOTE));

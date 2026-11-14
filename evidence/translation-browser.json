@@ -1,0 +1,16 @@
+{
+  "pluginVersion": "0.3.3",
+  "runtimeVersion": "0.2.2-rc.1",
+  "browser": "headless Microsoft Edge",
+  "checks": [
+    "native project selector and translation fields save through ConfigForm",
+    "project choice and custom translation prompt survive reload",
+    "actual A request receives the English rule; exactly one B call receives only the English report",
+    "Chinese translation replaces the source row without flashing the English original",
+    "original disclosure works",
+    "refresh replays the saved translation without another model call",
+    "turning off the project option restores legacy drafting and review and removes the current English rule"
+  ],
+  "pageErrors": [],
+  "realApiCalls": 0
+}

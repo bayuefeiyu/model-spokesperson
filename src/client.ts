@@ -16,7 +16,7 @@ const children = {
 } as const;
 /** Wrap the live official registration; preserve all of its declared children and injected capabilities. */
 export function apply(ctx: Context) {
-  ctx.inject(['configForms', 'remote', 'remote.session'], mountSettings);
+  ctx.inject(['configForms', 'remote', 'remote.session', 'workspaces'], mountSettings);
   ctx.inject(['remote', 'remote.pluginManager'], mountUpdateAction);
   ctx.inject(['remote'], child => { child.effect(() => child.remote.$mount(RETRY_REMOTE)); });
   let retryCall: ((request: RetryRequest) => Promise<RetryResponse>) | undefined;

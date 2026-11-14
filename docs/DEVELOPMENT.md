@@ -1,5 +1,9 @@
 # 开发和隔离验证
 
+## 翻译流程浏览器回归（0.3.3）
+
+先将构建产物安装到隔离 profile `spokesperson-translation`，再执行 `rtk proxy node scripts/prepare-demo.mjs spokesperson-translation --empty-settings --translation`，从该 profile 在独立端口启动 Web。`--translation` 使用单独 mock 模块，识别实际 A 请求中的英文规则，并以纯文本接受 B 的翻译输入。运行 `rtk proxy node scripts/browser-translation.mjs LOCAL_URL` 验证设置、项目选择、规则、单次调用、正文隔离、原文入口、回放和旧流程恢复。该流程最后重新开启测试项目的翻译设置，服务重启后使用 `--verify-only` 再检查持久化。结果分别写入 `evidence/translation-browser.json` 和 `evidence/translation-browser-restart.json`，截图为 `evidence/translation-browser.png`。mock 仅验证消息传递与界面，真实模型的语言遵循和翻译质量需另行抽样。
+
 目标 Node 24 / DSH 0.2.2-rc.1，Windows PowerShell。遵循本机 RTK 指令。
 
 ## 构建
