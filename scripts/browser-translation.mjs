@@ -108,7 +108,8 @@ try {
   await save();
   assert.deepEqual(errors, []);
   const manifest = JSON.parse(await readFile('package.json', 'utf8'));
-  const result = { pluginVersion: manifest.version, runtimeVersion: '0.2.2-rc.1', browser: 'headless Microsoft Edge', checks, pageErrors: errors, realApiCalls: 0 };
+  const runtime = JSON.parse(await readFile('.dev/runtime/node_modules/@deepseek-ai/dsh/package.json', 'utf8'));
+  const result = { pluginVersion: manifest.version, runtimeVersion: runtime.version, browser: 'headless Microsoft Edge', checks, pageErrors: errors, realApiCalls: 0 };
   await writeFile(verifyOnly ? 'evidence/translation-browser-restart.json' : 'evidence/translation-browser.json', JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {

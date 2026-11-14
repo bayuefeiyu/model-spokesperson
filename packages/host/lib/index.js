@@ -479,7 +479,7 @@ async function apply(ctx, raw = {}) {
     wire: { viewSchema: ProjectionSchema, view: (state) => Object.fromEntries(Object.entries(state.rows).map(([key, { context: _context, stages: _stages, request: _request, ...row }]) => [key, row])) }
   });
   new RetryService(ctx, retry);
-  const isMain = (agent) => agent.session.header.origin !== "subagent" && ctx.agents.roots().some((root) => root.id === agent.id);
+  const isMain = (agent) => agent.session.header.origin !== "subagent" && ctx.agents.get(agent.id) === agent;
   async function translationEnabledFor(agent, settings) {
     if (!settings.enabled || settings.translationWorkspaces.length === 0) return false;
     const registry = ctx.get("workspaceRegistry");
@@ -728,7 +728,7 @@ async function apply(ctx, raw = {}) {
     });
   }
   async function retry(request2) {
-    let agent = ctx.agents.roots().find((root) => root.session.id === request2.sessionId);
+    let agent = ctx.agents.get(request2.sessionId);
     if (!agent) {
       const controller = ctx.get("sessionController");
       if (!controller) return { accepted: false, message: "\u4F1A\u8BDD\u6682\u4E0D\u53EF\u7528\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00\u4F1A\u8BDD\u540E\u91CD\u8BD5\u3002" };
@@ -1054,7 +1054,7 @@ ${JSON.stringify(row.rewrittenText)}` }]
     recover(agent);
     return void 0;
   }, { global: true });
-  for (const agent of ctx.agents.roots()) recover(agent);
+  for (const agent of ctx.agents.list()) recover(agent);
   ctx.on("agent/disposed", ({ agent }) => {
     cancel(agent, "agent-disposed");
     states.delete(agent);

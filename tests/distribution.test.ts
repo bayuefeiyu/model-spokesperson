@@ -23,6 +23,12 @@ test('the GitHub repository root is a ready-to-load DSH bundle without build lif
     assert.ok((await stat(entryPath)).isFile(), 'committed distribution must include '+entryPath);
   }
   const ui = JSON.parse(await readFile(resolve(root, 'packages/ui/package.json'), 'utf8'));
+  const host = JSON.parse(await readFile(resolve(root, 'packages/host/package.json'), 'utf8'));
+  const sdk = JSON.parse(await readFile(resolve(root, 'node_modules/@deepseek-ai/dsh-agent/package.json'), 'utf8'));
+  for (const component of [manifest, host, ui]) {
+    assert.equal(component.version, manifest.version);
+    assert.equal(component.engines.dsh, sdk.version, 'every installed component must admit the tested Host version');
+  }
   assert.ok(ui.dsh.client.inject.includes('@deepseek-ai/dsh-api-workspace-controller'), 'project settings require the workspace Client service before mounting');
   const client = resolve(root, 'packages/ui', ui.exports['./client']);
   const source = await readFile(client, 'utf8');

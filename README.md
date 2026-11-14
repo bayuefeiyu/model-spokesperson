@@ -2,7 +2,7 @@
 
 指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
 
-当前本地开发版本为 Host + Web Client bundle **0.3.3**，目标为 **DeepSeek Harness 0.2.2-rc.1**。本地安装包为 `dist/dsh-plugins-model-spokesperson-0.3.3.tgz`。0.3.3 修复项目选择器的工作区服务加载时机，并完成实际构建包的隔离 Web 翻译验收。已有公开版本参考 [v0.3.2](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.3.2)。
+当前版本为 Host + Web Client bundle **0.3.4**，适配 **DeepSeek Harness 0.2.2-rc.3**。本地安装包为 `dist/dsh-plugins-model-spokesperson-0.3.4.tgz`。0.3.4 更新 SDK 和 Zod，适配新版 agent 注册表接口。安装 rc.3 时使用仓库默认分支，固定旧版 tag 的安装仍采用其原有兼容声明。适配详情见 [rc.3 验证记录](evidence/dsh-rc3-compat.md)。
 
 GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
 
@@ -36,12 +36,12 @@ GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefe
 
 使用目标 DSH 安装自带的 CLI 安装到指定 profile（`dsh` 代表该 CLI；本机 shell 使用 RTK）：
 
-在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`，或固定版本 `https://github.com/bayuefeiyu/model-spokesperson#v0.3.2`（最新公开 Release）。公开仓库不需要 GitHub 登录。仓库根目录已声明组合包并包含预构建入口，无须安装时运行构建脚本。
+在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`。仓库根目录声明组合包并包含预构建入口。DSH 0.2.2-rc.3 用户应选择默认分支，历史版本 tag 仍有对应的宿主版本限制。
 
 ```powershell
-rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson#v0.3.2
+rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson
 # 也可下载 Release 安装包后使用本地路径：
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.3.tgz
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.4.tgz
 ```
 
 如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。

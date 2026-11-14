@@ -1,5 +1,7 @@
 # 开发交接
 
+2026-11-14：用户升级到 DSH 0.2.2-rc.3 后，0.3.3 的精确 rc.1 兼容声明阻止安装。0.3.4 将全部 SDK 和组件清单更新到 rc.3，Zod 更新到宿主使用的 4.6.6。新版移除了 agents.roots()，改用 get(id) 判定活跃实例、list() 遍历恢复，并通过持久化 origin 排除子 agent。类型检查与 70 项自动测试通过，隔离 rc.3 profile 的实际安装成功。旧 rc.1 开发依赖移到忽略目录 .dev/rc1-dependency-backup，锁文件为 rc.3 重新生成。安装使用 GitHub 默认分支，历史 tag 的宿主限制保持各自版本。详细证据见 evidence/dsh-rc3-compat.md。
+
 2026-11-14：在已实现的 0.3.2 基础上继续方案验收，修复真实 Web 设置页缺失项目选择器的问题。本地版本 0.3.3。Client 现在等待 `workspaces` 服务再挂载设置，UI manifest 声明 `@deepseek-ai/dsh-api-workspace-controller` 加载依赖。新增 `browser-translation.mjs` 和独立翻译 mock，完成实际 tarball 安装后的项目设置、单次翻译、输入隔离、原文入口、刷新回放及关闭后恢复旧流程验收。详细结果见 evidence/translation-browser.json。A/B 为模拟 adapter，真实模型的语言质量仍需抽样。
 
 2026-11-08：本地开发版本升为 0.3.2，并已创建 tag 与 GitHub Release `v0.3.2`（tarball + `SHA256SUMS.txt`）。实际会话确认 A 的系统提示已包含英文规则标记，但 A 的可见正文仍是中文，推理明确写了“Respond concisely in Chinese”；因此不是注入缺失，而是指令遵循问题。默认英文规则改为明确覆盖用户中文输入，并把整段规则开放为 `englishPrompt` 设置；翻译方式不再读取/附加旧 `style`，文风要求全部写入 `translationPrompt`。70 项测试、类型检查和构建通过；0.3.1 的 DSH 0.2.2 适配与 0.3.0 功能说明保留如下。

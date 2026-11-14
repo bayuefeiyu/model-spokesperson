@@ -66,7 +66,7 @@ export async function apply(ctx: Context, raw: RuntimeSettings = {}) {
   });
   new RetryService(ctx, retry);
 
-  const isMain = (agent: Agent) => agent.session.header.origin !== 'subagent' && ctx.agents.roots().some(root => root.id === agent.id);
+  const isMain = (agent: Agent) => agent.session.header.origin !== 'subagent' && ctx.agents.get(agent.id) === agent;
   async function translationEnabledFor(agent: Agent, settings: Settings): Promise<boolean> {
     if (!settings.enabled || settings.translationWorkspaces.length === 0) return false;
     const registry = (ctx as unknown as { get(name: string): unknown }).get('workspaceRegistry') as WorkspaceRegistryLike | undefined;
@@ -294,7 +294,7 @@ export async function apply(ctx: Context, raw: RuntimeSettings = {}) {
     void contained.finally(() => { pending.delete(contained); if (!pending.size) jobs.delete(agent); });
   }
   async function retry(request: RetryRequest): Promise<RetryResponse> {
-    let agent = ctx.agents.roots().find(root => root.session.id === request.sessionId);
+    let agent = ctx.agents.get(request.sessionId as Session['id']);
     if (!agent) {
       const controller = ctx.get('sessionController');
       if (!controller) return { accepted: false, message: '会话暂不可用，请重新打开会话后重试。' };
@@ -555,7 +555,7 @@ export async function apply(ctx: Context, raw: RuntimeSettings = {}) {
     }
   }
   ctx.on('agent/created', ({ agent }) => { recover(agent); return undefined; }, { global: true });
-  for (const agent of ctx.agents.roots()) recover(agent);
+  for (const agent of ctx.agents.list()) recover(agent);
   ctx.on('agent/disposed', ({ agent }) => {
     cancel(agent, 'agent-disposed'); states.delete(agent);
     translationRuleIntents.delete(agent); translationSteps.delete(agent);
