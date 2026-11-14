@@ -29,6 +29,8 @@ rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-
 
 插件详情的更新按钮检查 GitHub Release 的 tarball 资产；仅推送源码不会产生 Release。Git URL 安装来源可重新安装默认分支，或使用上述本地包。卸载插件保留配置和会话记录。
 
+**0.3.5 已发布正式 [Release](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.3.5)**，附安装包和 SHA256SUMS.txt。已有插件可点击“检查更新”→“更新到 v0.3.5”，完成后刷新页面或按宿主提示重启。
+
 ## 翻译、失败与历史
 
 - B 的 system 为翻译提示词和目标语言，user 只包含当前 A 正文；文风直接写入翻译提示词。

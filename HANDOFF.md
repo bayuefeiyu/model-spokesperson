@@ -2,6 +2,8 @@
 
 ## 当前修正：0.3.5（2026-11-14）
 
+已补齐正式发布：[v0.3.5](https://github.com/bayuefeiyu/model-spokesperson/releases/tag/v0.3.5)，tag 对应功能提交 `314f92b`。附件为 dsh-plugins-model-spokesperson-0.3.5.tgz 与 SHA256SUMS.txt，公开下载核验通过，插件 fetchLatestRelease({ force: true }) 已识别 0.3.5；GitHub latest 也是该版本。仅推送源码不能交付更新按钮可用的版本，后续遵循 docs/RELEASING.md。发布证据见 evidence/release-0.3.5.json。
+
 用户指出设置仍保留旧功能。原因是此前将翻译作为可切换模式，关闭后仍启动旧流程。现在新回复只允许翻译，未启用项目由 A 直接回复；设置删除旧表达偏好、起草/核对提示词与轮数，翻译字段始终显示。旧记录及其手动恢复兼容代码保留，不用于新回复。
 
 实际执行 npm run check、npm test（59 项通过）、npm run build、npm run pack:plugin。0.3.5 tarball 安装到隔离 spokesperson-rc3 profile，browser-translation.mjs 及服务重启后的 --verify-only 均通过：保存/刷新/重启、单次翻译、原文展开、关闭项目后仅 A 调用、旧控件消失，页面无错误。测试只用 mock，没有改日常 desktop 配置或调用收费 API。证据见 evidence/translation-browser.json、evidence/translation-browser-restart.json 和 evidence/translation-settings.png。下方均为历史交接。
