@@ -902,7 +902,7 @@ async function apply(ctx, raw = {}) {
           saveBypass(agent, frame, "translation-route-changed", rule);
           return;
         }
-        const attempt3 = {
+        const attempt2 = {
           row: {
             schemaVersion: 1,
             policyVersion: 3,
@@ -924,35 +924,10 @@ async function apply(ctx, raw = {}) {
           done: false,
           controller: new AbortController()
         };
-        map.set(key, attempt3);
-        save(agent.session, attempt3.row);
+        map.set(key, attempt2);
+        save(agent.session, attempt2.row);
         return;
       }
-      if (!rule) return;
-      const attempt2 = {
-        row: {
-          schemaVersion: 1,
-          policyVersion: 2,
-          promptVersion: 2,
-          sessionId: agent.session.id,
-          turn: frame.turn,
-          step: frame.step,
-          attemptId: frame.attemptId,
-          source: rule.source,
-          writer: rule.writer,
-          status: "collecting",
-          retryCount: 0,
-          reviewRounds: settings.reviewRounds,
-          startedAt: Date.now()
-        },
-        context: captureWorkContext(agent.session.deriveMessages(), projection.stateOf(agent.session).rows),
-        policy: settings,
-        terminal: false,
-        done: false,
-        controller: new AbortController()
-      };
-      map.set(key, attempt2);
-      save(agent.session, attempt2.row);
       return;
     }
     const attempt = [...map.values()].find((item) => item.row.attemptId === frame.attemptId);

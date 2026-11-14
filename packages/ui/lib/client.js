@@ -407,7 +407,7 @@ function SettingsView({ form, loadCatalog, workspaces }) {
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("form", { "aria-label": "\u6A21\u578B\u5634\u66FF\u8BBE\u7F6E", noValidate: true, onSubmit: (event) => void save(event), style: { ...text, padding: "18px 0", display: "grid", gap: 16 }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h3", { style: { margin: 0, fontSize: 16 }, children: "\u6A21\u578B\u4E0E\u8868\u8FBE" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "A \u8D1F\u8D23\u5206\u6790\u548C\u6267\u884C\uFF0CB \u6839\u636E\u5DE5\u4F5C\u4E0A\u4E0B\u6587\u72EC\u7ACB\u4F5C\u7B54\uFF0C\u518D\u53C2\u8003 A \u7684\u62A5\u544A\u6838\u5BF9\u81EA\u5DF1\u7684\u521D\u7A3F\u3002" })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "A \u8D1F\u8D23\u5206\u6790\u548C\u6267\u884C\uFF0C\u5E76\u7528\u82F1\u6587\u64B0\u5199\u804A\u5929\u56DE\u590D\uFF1BB \u53EA\u7FFB\u8BD1\u8FD9\u6761\u56DE\u590D\uFF0C\u6309\u7FFB\u8BD1\u63D0\u793A\u8BCD\u8C03\u6574\u6587\u98CE\u3002\u6587\u4EF6\u3001\u6587\u6863\u548C\u754C\u9762\u4ECD\u4F7F\u7528\u4EFB\u52A1\u8981\u6C42\u7684\u8BED\u8A00\u3002" })
     ] }),
     !snapshot.writable && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", style: note, children: "\u5F53\u524D\u90E8\u7F72\u7684\u914D\u7F6E\u4E3A\u53EA\u8BFB\u3002" }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("fieldset", { disabled: !writable, style: { border: 0, padding: 0, margin: 0, minWidth: 0, display: "grid", gap: 16 }, children: [
@@ -429,7 +429,7 @@ function SettingsView({ form, loadCatalog, workspaces }) {
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }, children: [
           selector(rule.source, `\u7B2C ${index + 1} \u7EC4 A \u6A21\u578B\uFF08\u5B8C\u6210\u5DE5\u4F5C\uFF09`, (route) => edit((settings) => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, source: route } : item) }))),
-          selector(rule.writer, `\u7B2C ${index + 1} \u7EC4 B \u6A21\u578B\uFF08\u72EC\u7ACB\u4F5C\u7B54\uFF09`, (route) => edit((settings) => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, writer: route } : item) })))
+          selector(rule.writer, `\u7B2C ${index + 1} \u7EC4 B \u6A21\u578B\uFF08\u7FFB\u8BD1\u56DE\u590D\uFF09`, (route) => edit((settings) => ({ ...settings, rules: settings.rules.map((item, i) => i === index ? { ...item, writer: route } : item) })))
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", style: { ...button, marginTop: 12 }, onClick: () => edit((settings) => ({ ...settings, rules: settings.rules.filter((_, i) => i !== index) })), children: [
           "\u5220\u9664\u7B2C ",
@@ -439,7 +439,7 @@ function SettingsView({ form, loadCatalog, workspaces }) {
       ] }, index)),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", style: button, onClick: () => edit((settings) => ({ ...settings, rules: [...settings.rules, { source: { provider: "", model: "" }, writer: { provider: "", model: "" } }] })), children: "\u6DFB\u52A0\u6A21\u578B\u6620\u5C04" }) }),
       workspaces && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("fieldset", { style: { border: "1px solid var(--dsw-alias-border-l1, #e2e8f0)", borderRadius: 10, padding: 14, margin: 0, minWidth: 0 }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("legend", { children: "\u5DE5\u4F5C\u65B9\u5F0F\uFF08\u6309\u9879\u76EE\uFF09" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("legend", { children: "\u9879\u76EE\u542F\u7528\u8303\u56F4" }),
         workspaceItems.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: workspaceState.state === "loading" ? "\u6B63\u5728\u8BFB\u53D6\u9879\u76EE\u5217\u8868\u2026" : workspaceState.state === "error" ? "\u9879\u76EE\u5217\u8868\u6682\u4E0D\u53EF\u7528\uFF1B\u8BF7\u5237\u65B0\u9875\u9762\u540E\u91CD\u8BD5\u3002" : "\u5C1A\u672A\u68C0\u6D4B\u5230\u9879\u76EE\u3002\u8BF7\u5148\u5728 DSH \u4E2D\u6253\u5F00\u6216\u521B\u5EFA\u4E00\u4E2A\u9879\u76EE\uFF1B\u6B64\u8BBE\u7F6E\u6309\u9879\u76EE\u4FDD\u5B58\uFF0C\u540C\u4E00 profile \u4E0B\u4E0D\u540C\u9879\u76EE\u4E92\u4E0D\u5F71\u54CD\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "grid", gap: 10 }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
             "\u9879\u76EE",
@@ -457,18 +457,18 @@ function SettingsView({ form, loadCatalog, workspaces }) {
             "\uFF09"
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "flex", gap: 8, alignItems: "center" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "checkbox", "aria-label": "\u672C\u9879\u76EE\u4F7F\u7528\u82F1\u6587\u5E95\u7A3F\u548C\u4E2D\u6587\u7FFB\u8BD1", checked: translationOn, disabled: !selectedWorkspace, onChange: (event) => {
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "checkbox", "aria-label": "\u5728\u672C\u9879\u76EE\u542F\u7528\u5634\u66FF", checked: translationOn, disabled: !selectedWorkspace, onChange: (event) => {
               if (!selectedWorkspace) return;
               const id = selectedWorkspace.workspaceId;
               edit((settings) => ({ ...settings, translationWorkspaces: event.target.checked ? [.../* @__PURE__ */ new Set([...settings.translationWorkspaces, id])] : settings.translationWorkspaces.filter((value2) => value2 !== id) }));
             } }),
-            "\u672C\u9879\u76EE\u4F7F\u7528\u82F1\u6587\u5E95\u7A3F\u548C\u4E2D\u6587\u7FFB\u8BD1"
+            "\u5728\u672C\u9879\u76EE\u542F\u7528\u5634\u66FF"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u52FE\u9009\u540E\uFF0CA \u5728\u672C\u9879\u76EE\u7528\u82F1\u6587\u5199\u9762\u5411\u7528\u6237\u7684\u62A5\u544A\u3001\u89E3\u91CA\u548C\u95EE\u9898\uFF1BB \u53EA\u6536\u5230 A \u7684\u8FD9\u6761\u56DE\u590D\uFF0C\u6309\u7FFB\u8BD1\u8981\u6C42\u7FFB\u8BD1\u4E00\u6B21\u3002\u672A\u52FE\u9009\u7684\u9879\u76EE\u7EE7\u7EED\u4F7F\u7528\u72EC\u7ACB\u8D77\u8349 + \u6838\u5BF9\uFF1B\u5173\u95ED\u52FE\u9009\u4F1A\u6062\u590D\u8BE5\u9879\u76EE\u7684\u65E7\u65B9\u5F0F\uFF0C\u5DF2\u4FDD\u5B58\u7684\u65E7\u63D0\u793A\u8BCD\u548C\u6838\u5BF9\u8F6E\u6570\u4ECD\u4FDD\u7559\u3002" })
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u52FE\u9009\u540E\uFF0CA \u5728\u672C\u9879\u76EE\u7528\u82F1\u6587\u5199\u9762\u5411\u7528\u6237\u7684\u62A5\u544A\u3001\u89E3\u91CA\u548C\u95EE\u9898\uFF1BB \u53EA\u6536\u5230 A \u7684\u8FD9\u6761\u56DE\u590D\uFF0C\u6309\u7FFB\u8BD1\u8981\u6C42\u7FFB\u8BD1\u4E00\u6B21\u3002\u5173\u95ED\u540E\u4E0D\u518D\u6CE8\u5165\u82F1\u6587\u56DE\u590D\u8981\u6C42\uFF0C\u7531 A \u76F4\u63A5\u56DE\u590D\uFF0C\u4E0D\u8C03\u7528 B\u3002\u4EC5\u5BF9\u4E0A\u9762\u914D\u7F6E\u7684 A \u6A21\u578B\u751F\u6548\u3002" })
         ] })
       ] }),
-      translationOn ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "grid", gap: 14 }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u7FFB\u8BD1\u65B9\u5F0F\u4E0B B \u53EA\u8BFB\u53D6 A \u7684\u8FD9\u6761\u56DE\u590D\uFF0C\u4E0D\u8BFB\u53D6\u5DE5\u5177\u7ED3\u679C\u3001\u5BF9\u8BDD\u5386\u53F2\u6216\u6587\u4EF6\u5185\u5BB9\uFF1B\u7FFB\u8BD1\u8BF7\u6C42\u53EA\u6709\u4E00\u6B21\uFF0C\u4E0D\u6267\u884C\u6838\u5BF9\u8F6E\u6B21\u3002\u7FFB\u8BD1\u548C\u6587\u98CE\u8981\u6C42\u90FD\u5199\u5728\u4E0B\u9762\u7684\u201C\u7FFB\u8BD1\u63D0\u793A\u8BCD\u201D\u4E2D\uFF0C\u4E0D\u518D\u9644\u52A0\u201C\u8868\u8FBE\u504F\u597D\u201D\u3002" }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "grid", gap: 14 }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "B \u53EA\u8BFB\u53D6 A \u7684\u8FD9\u6761\u56DE\u590D\uFF0C\u4E0D\u8BFB\u53D6\u5DE5\u5177\u7ED3\u679C\u3001\u5BF9\u8BDD\u5386\u53F2\u6216\u6587\u4EF6\u5185\u5BB9\u3002\u7FFB\u8BD1\u548C\u6587\u98CE\u8981\u6C42\u90FD\u5199\u5728\u4E0B\u9762\u7684\u201C\u7FFB\u8BD1\u63D0\u793A\u8BCD\u201D\u4E2D\u3002" }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
           "\u76EE\u6807\u8BED\u8A00",
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u7FFB\u8BD1\u76EE\u6807\u8BED\u8A00", style: control, value: value.translationTarget, onChange: (event) => edit((settings) => ({ ...settings, translationTarget: event.target.value })) })
@@ -484,42 +484,7 @@ function SettingsView({ form, loadCatalog, workspaces }) {
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("textarea", { "aria-label": "\u7FFB\u8BD1\u63D0\u793A\u8BCD", rows: 10, spellCheck: false, style: { ...control, resize: "vertical" }, value: value.translationPrompt, onChange: (event) => edit((settings) => ({ ...settings, translationPrompt: event.target.value })) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", style: button, onClick: () => edit((settings) => ({ ...settings, translationPrompt: TRANSLATE_SYSTEM })), children: "\u6062\u590D\u9ED8\u8BA4\u7FFB\u8BD1\u63D0\u793A\u8BCD" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u8BF7\u6C42\u4F1A\u5728\u7FFB\u8BD1\u63D0\u793A\u8BCD\u672B\u5C3E\u8FFD\u52A0\u201C\u76EE\u6807\u8BED\u8A00\u201D\u3002\u65E7\u65B9\u5F0F\u7684\u72EC\u7ACB\u8D77\u8349\u63D0\u793A\u8BCD\u3001\u6838\u5BF9\u63D0\u793A\u8BCD\u548C\u6838\u5BF9\u8F6E\u6570\u4ECD\u4FDD\u7559\uFF0C\u5173\u95ED\u672C\u9879\u76EE\u7FFB\u8BD1\u540E\u6062\u590D\u4F7F\u7528\u3002" })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
-          "\u65E7\u65B9\u5F0F\u8868\u8FBE\u504F\u597D",
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("textarea", { "aria-label": "\u8868\u8FBE\u504F\u597D", rows: 3, style: control, value: value.style, onChange: (event) => edit((settings) => ({ ...settings, style: event.target.value })) }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: note, children: "\u4EC5\u7528\u4E8E\u672A\u542F\u7528\u7FFB\u8BD1\u7684\u9879\u76EE\u3002" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("details", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("summary", { style: { cursor: "pointer" }, children: "\u63D0\u793A\u8BCD\u8BBE\u7F6E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "grid", gap: 14, marginTop: 12 }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u4EE5\u4E0B\u662F\u53D1\u9001\u7ED9 B \u7684\u5B8C\u6574\u9636\u6BB5\u63D0\u793A\u8BCD\uFF0C\u53EF\u76F4\u63A5\u4FEE\u6539\u3002\u6BCF\u6B21\u8C03\u7528\u8FD8\u4F1A\u5728\u672B\u5C3E\u9644\u52A0\u4E0A\u9762\u7684\u201C\u8868\u8FBE\u504F\u597D\u201D\u3002\u6062\u590D\u9ED8\u8BA4\u53EA\u4FEE\u6539\u5F53\u524D\u8349\u7A3F\uFF0C\u70B9\u51FB\u201C\u4FDD\u5B58\u8BBE\u7F6E\u201D\u540E\u751F\u6548\u3002" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
-              "\u72EC\u7ACB\u8D77\u8349\u63D0\u793A\u8BCD",
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("textarea", { "aria-label": "\u72EC\u7ACB\u8D77\u8349\u63D0\u793A\u8BCD", rows: 12, spellCheck: false, style: { ...control, resize: "vertical" }, value: value.draftPrompt, onChange: (event) => edit((settings) => ({ ...settings, draftPrompt: event.target.value })) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", style: button, onClick: () => edit((settings) => ({ ...settings, draftPrompt: DRAFT_SYSTEM })), children: "\u6062\u590D\u9ED8\u8BA4\u8D77\u8349\u63D0\u793A\u8BCD" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u8D77\u8349\u8F93\u5165\u4E3A JSON\uFF1AuserQuestion \u662F\u7528\u6237\u672C\u6B21\u8981\u6C42\uFF0CworkContext \u662F A \u5199\u672C\u6B21\u62A5\u544A\u524D\u7684\u5DE5\u4F5C\u6750\u6599\uFF1B\u4E0D\u5305\u542B A \u672C\u6B21\u6210\u7A3F\u3002" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
-              "\u6838\u5BF9\u5B8C\u5584\u63D0\u793A\u8BCD",
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("textarea", { "aria-label": "\u6838\u5BF9\u5B8C\u5584\u63D0\u793A\u8BCD", rows: 14, spellCheck: false, style: { ...control, resize: "vertical" }, value: value.reviewPrompt, onChange: (event) => edit((settings) => ({ ...settings, reviewPrompt: event.target.value })) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", style: button, onClick: () => edit((settings) => ({ ...settings, reviewPrompt: REVIEW_SYSTEM })), children: "\u6062\u590D\u9ED8\u8BA4\u6838\u5BF9\u63D0\u793A\u8BCD" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u6838\u5BF9\u8F93\u5165\u8FD8\u5305\u542B ownDraft\uFF08B \u81EA\u5DF1\u7684\u4E0A\u4E00\u7A3F\uFF09\u3001sourceReport\uFF08A \u7684\u53C2\u8003\u62A5\u544A\uFF09\u3001reviewRound\uFF08\u5F53\u524D\u6838\u5BF9\u8F6E\u6B21\uFF09\u3002\u8FD9\u4E9B\u5B57\u6BB5\u7531\u63D2\u4EF6\u63D0\u4F9B\uFF0C\u65E0\u9700\u586B\u5199\u5360\u4F4D\u7B26\u3002\u6838\u5BF9\u8F6E\u6570\u4E3A 0 \u65F6\u4E0D\u4F7F\u7528\u6838\u5BF9\u63D0\u793A\u8BCD\u3002" })
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { style: { display: "grid", gap: 5 }, children: [
-          "\u6838\u5BF9\u8F6E\u6570",
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u6838\u5BF9\u8F6E\u6570", type: "number", min: 0, step: 1, style: control, value: value.reviewRounds, onChange: (event) => edit((settings) => ({ ...settings, reviewRounds: Number(event.target.value) })) }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: note, children: [
-            "\u5148\u72EC\u7ACB\u8D77\u8349\uFF0C\u518D\u6838\u5BF9 ",
-            value.reviewRounds,
-            " \u8F6E\uFF0C\u5171\u8C03\u7528 B ",
-            value.reviewRounds + 1,
-            " \u6B21\u3002\u8BBE\u4E3A 0 \u65F6\u53EA\u72EC\u7ACB\u8D77\u8349\uFF0C\u4E0D\u5411 B \u63D0\u4F9B A \u672C\u6B21\u62A5\u544A\u3002\u6BCF\u8F6E\u6838\u5BF9\u90FD\u5728 B \u81EA\u5DF1\u7684\u4E0A\u4E00\u7A3F\u4E0A\u5B8C\u5584\u3002"
-          ] })
-        ] })
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u8BF7\u6C42\u4F1A\u5728\u7FFB\u8BD1\u63D0\u793A\u8BCD\u672B\u5C3E\u8FFD\u52A0\u201C\u76EE\u6807\u8BED\u8A00\u201D\u3002\u6587\u98CE\u8981\u6C42\u76F4\u63A5\u5199\u5165\u7FFB\u8BD1\u63D0\u793A\u8BCD\u3002" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("details", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("summary", { style: { cursor: "pointer" }, children: "\u9AD8\u7EA7\u8BBE\u7F6E" }),
@@ -527,10 +492,10 @@ function SettingsView({ form, loadCatalog, workspaces }) {
           field.label,
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": field.label, type: "number", step: field.key === "timeoutMs" ? "any" : 1, min: field.min, max: field.max, style: control, value: value[field.key] / field.scale, onChange: (event) => edit((settings) => ({ ...settings, [field.key]: Number(event.target.value) * field.scale })) })
         ] }, field.key)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u63D2\u4EF6\u9ED8\u8BA4\u4E0D\u989D\u5916\u9650\u5236\u8F93\u5165\u548C\u7B49\u5F85\u65F6\u95F4\uFF0C\u8F93\u51FA\u4E0A\u9650\u8DDF\u968F B \u7684\u6A21\u578B\u914D\u7F6E\uFF1B\u5B9E\u9645\u4ECD\u53D7\u6A21\u578B\u53CA\u63D0\u4F9B\u65B9\u9650\u5236\u3002\u65E7\u8BBE\u7F6E\u4E2D\u7684\u9650\u989D\u4F1A\u4FDD\u7559\uFF0C\u53EF\u6539\u4E3A 0\u3002\u8F93\u5165\u4E0A\u9650\u6309\u5B57\u7B26\u6570\u8BA1\u7B97\uFF0C\u5E76\u975E\u6A21\u578B\u7684 token \u4E0A\u4E0B\u6587\u7A97\u53E3\u3002\u65E7\u65B9\u5F0F\u7684\u6BCF\u6B21\u8F93\u5165\u5305\u542B\u5DE5\u4F5C\u4E0A\u4E0B\u6587\uFF0C\u6838\u5BF9\u65F6\u8FD8\u5305\u542B B \u7684\u4E0A\u4E00\u7A3F\u548C A \u7684\u62A5\u544A\uFF1B\u7FFB\u8BD1\u65B9\u5F0F\u53EA\u5305\u542B\u7FFB\u8BD1\u63D0\u793A\u8BCD\u548C A \u7684\u8FD9\u6761\u56DE\u590D\u3002\u8D85\u8FC7\u81EA\u8BBE\u4E0A\u9650\u4F1A\u56DE\u9000\uFF0C\u4E0D\u4F1A\u9759\u9ED8\u622A\u65AD\u3002" })
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u63D2\u4EF6\u9ED8\u8BA4\u4E0D\u989D\u5916\u9650\u5236\u8F93\u5165\u548C\u7B49\u5F85\u65F6\u95F4\uFF0C\u8F93\u51FA\u4E0A\u9650\u8DDF\u968F B \u7684\u6A21\u578B\u914D\u7F6E\uFF1B\u5B9E\u9645\u4ECD\u53D7\u6A21\u578B\u53CA\u63D0\u4F9B\u65B9\u9650\u5236\u3002\u65E7\u8BBE\u7F6E\u4E2D\u7684\u9650\u989D\u4F1A\u4FDD\u7559\uFF0C\u53EF\u6539\u4E3A 0\u3002\u8F93\u5165\u4E0A\u9650\u6309\u5B57\u7B26\u6570\u8BA1\u7B97\uFF0C\u5E76\u975E\u6A21\u578B\u7684 token \u4E0A\u4E0B\u6587\u7A97\u53E3\u3002\u6BCF\u6B21\u7FFB\u8BD1\u53EA\u5305\u542B\u7FFB\u8BD1\u63D0\u793A\u8BCD\u548C A \u7684\u8FD9\u6761\u56DE\u590D\u3002\u8D85\u8FC7\u81EA\u8BBE\u4E0A\u9650\u4F1A\u56DE\u9000\uFF0C\u4E0D\u4F1A\u9759\u9ED8\u622A\u65AD\u3002" })
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u804A\u5929\u65F6\u4ECD\u5728\u8F93\u5165\u6846\u9009\u62E9 A\uFF0C\u8FD9\u91CC\u4E0D\u4F1A\u81EA\u52A8\u5207\u6362\u4F1A\u8BDD\u6A21\u578B\u3002\u4FDD\u5B58\u53EA\u5F71\u54CD\u540E\u7EED\u56DE\u590D\uFF0C\u8FDB\u884C\u4E2D\u7684\u6D41\u7A0B\u4FDD\u7559\u539F\u8BBE\u7F6E\u3002B \u4F1A\u589E\u52A0\u8C03\u7528\u8D39\u7528\u548C\u7B49\u5F85\u65F6\u95F4\uFF1B\u6838\u5BF9\u6216\u7FFB\u8BD1\u5931\u8D25\u4F1A\u663E\u793A A \u539F\u6587\u3002\u6CA1\u6709\u5339\u914D\u5230 A \u7684\u6A21\u578B\u76F4\u63A5\u663E\u793A\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: note, children: "\u804A\u5929\u65F6\u4ECD\u5728\u8F93\u5165\u6846\u9009\u62E9 A\uFF0C\u8FD9\u91CC\u4E0D\u4F1A\u81EA\u52A8\u5207\u6362\u4F1A\u8BDD\u6A21\u578B\u3002\u4FDD\u5B58\u53EA\u5F71\u54CD\u540E\u7EED\u56DE\u590D\uFF0C\u8FDB\u884C\u4E2D\u7684\u6D41\u7A0B\u4FDD\u7559\u539F\u8BBE\u7F6E\u3002B \u4F1A\u589E\u52A0\u8C03\u7528\u8D39\u7528\u548C\u7B49\u5F85\u65F6\u95F4\uFF1B\u7FFB\u8BD1\u5931\u8D25\u4F1A\u663E\u793A A \u539F\u6587\u3002\u6CA1\u6709\u5339\u914D\u5230 A \u7684\u6A21\u578B\u76F4\u63A5\u663E\u793A\u3002" }),
     invalid && dirty && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", style: { margin: 0, color: "var(--dsw-alias-state-error-primary, #b91c1c)" }, children: invalid }),
     conflict && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: "\u8BBE\u7F6E\u5DF2\u5728\u5176\u4ED6\u9875\u9762\u6216\u914D\u7F6E\u6587\u4EF6\u4E2D\u6539\u53D8\u3002\u8BF7\u5148\u653E\u5F03\u5F53\u524D\u4FEE\u6539\uFF0C\u8BFB\u53D6\u6700\u65B0\u503C\u540E\u518D\u4FDD\u5B58\u3002" }),
     error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: error }),

@@ -1,93 +1,47 @@
-# DSH 模型嘴替插件
+# Model Spokesperson · 模型嘴替
 
-指定模型 A 完成工作，模型 B 根据工作上下文独立作答，再参考 A 的报告核对自己的初稿。B 不执行工具、不接管任务；其他模型 C 直接显示。
+DSH 原生 Host + Client 插件。当前版本 **0.3.5**，适配 **DSH 0.2.2-rc.3**。
 
-当前版本为 Host + Web Client bundle **0.3.4**，适配 **DeepSeek Harness 0.2.2-rc.3**。本地安装包为 `dist/dsh-plugins-model-spokesperson-0.3.4.tgz`。0.3.4 更新 SDK 和 Zod，适配新版 agent 注册表接口。安装 rc.3 时使用仓库默认分支，固定旧版 tag 的安装仍采用其原有兼容声明。适配详情见 [rc.3 验证记录](evidence/dsh-rc3-compat.md)。
+A 完成分析、决策、工具调用和文件修改，并用英文写面向用户的聊天回复。B 只收到 A 的这条回复，按目标语言和自定义文风翻译一次。文件、文档和界面仍使用任务要求的语言。仅处理明确配置的 provider + model，其他模型直接回复。
 
-GitHub 公开仓库：[bayuefeiyu/model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。已构建安装包和 SHA-256 校验文件通过 [GitHub Releases](https://github.com/bayuefeiyu/model-spokesperson/releases) 提供；源码仓库不包含开发依赖和测试会话数据。
+## 使用方式
 
-## 使用行为
+1. 在 DSH 配置可用 provider 和模型；插件默认关闭，不附带账号或密钥。
+2. 打开 **插件 → @dsh-plugins/model-spokesperson**，添加 A（完成工作）→ B（翻译回复）映射，勾选 **开启 B 回复**。
+3. 在 **项目启用范围** 选择项目，勾选 **在本项目启用嘴替**，编辑英文回复要求、目标语言和翻译提示词，点击 **保存设置**。
+4. 聊天输入框选择 A。插件不会自动切换会话模型。
 
-- 仅匹配配置的精确 provider + model；正常结束的报告、分析、讨论和普通提问交给 B。
-- 在 A 每次生成前捕获当时有效的工作上下文：用户要求、已记录的文件内容、工具调用与结果、此前公开工作记录。B 第一次调用看不到 A 本次报告，也不继承 A 的系统文风、隐藏推理或 provider replayState。
-- B 独立起草后，才在核对调用中获得 A 的报告。核对指令要求以 B 自己的上一稿为底稿，保留自己的结构和表达，只查漏纠错；发生矛盾优先参考实际工作证据。默认一轮核对（B 共调用两次），可设 0 或多轮。
-- 同次包含工具调用时直接显示；工具执行后下一步的独立报告仍可交给 B。异常、取消、截断、空文本、纯 JSON 和纯代码直通。
-- 等待期间隐藏 A 正文和 B 未完成的初稿，显示起草/核对阶段。全部步骤完成后在原助手行显示 B；任一步失败显示 A 原文，不重跑 A 或工具。
-- 保留 A 原始消息、思考、工具记录、usage 和 replayState。B 每一步请求、正文、usage 单独记录，并合计 B 的 token 用量。提供“查看 A 的原文”和“复制 B 回复”；宿主原有复制、轨迹、导出仍以 A 原始记录为准。
-- 下次用户输入时，通过正式日志入口向 A 附带此前展示稿。B 完成不会自动生成额外回答。
-- 刷新、重启、重载按保存记录恢复，不重新请求历史 B；没有展示稿的历史消息保持原文。
+**项目关闭或未启用时，由 A 直接回复，不注入英文要求、不调用 B。** 0.3.5 已移除旧表达偏好、独立起草、核对提示词和核对轮数的设置入口；新回复不会恢复旧流程。翻译设置始终可编辑。旧配置值和旧会话保留，旧失败记录仍可按原协议手动恢复。
 
-## 英文底稿 + 单次中文翻译（0.3.0）
+B 不接收对话历史、工具结果或文件材料，不使用工具，也不做二次核对。同一步含工具调用的进度文字直接显示；只有正常结束的独立文字回复进入翻译，纯代码或 JSON 交付物直接显示。每条翻译增加一次 B 调用。
 
-从 0.3.0 起，每个项目可以单独选择工作方式；未选择翻译的项目继续使用上面的“独立起草 + 核对”流程。
+英文规则由插件按项目和模型动态注入，不修改项目 AGENTS.md。完整系统提示预设可能覆盖规则，此时跳过 B；切换到未匹配模型同样直接显示。A 是否遵循英文要求仍受模型本身影响。
 
-- 在 **插件 → @dsh-plugins/model-spokesperson → 工作方式（按项目）** 选择项目，勾选 **本项目使用英文底稿和中文翻译**。设置按 DSH 的稳定 workspace 标识保存，同一 profile 下的其他项目不受影响。
-- 勾选后，插件在 A 的系统提示中追加 **A 的英文回复要求**：面向用户的聊天回复必须用英文，即使用户用中文提问或要求中文文档；文件、界面文案、代码、路径和引用保留用户要求的语言。这段要求可在设置中编辑并恢复默认。A 的工具调用、执行和原始日志不变。
-- A 正常结束且该步没有工具调用时，B **只收到 A 的这条回复**，按目标语言和翻译提示词翻译一次；不读取工作上下文、工具结果、文件内容或历史。翻译请求不含工具，也没有核对轮次。
-- 翻译方式下不再使用“表达偏好”，也不把它附加到 B 请求；所有翻译和文风要求直接写在翻译提示词中。旧方式仍保留自己的表达偏好，但只在未启用翻译的项目中显示。
-- 前端等待时显示“B 正在翻译…”，完成后在原行显示译文，保留“查看 A 的原文”和“复制 B 回复”。失败、超时、截断、空输出或超限时回退 A 原文；失败行提供手动重试，只额外调用一次 B。
-- 翻译方式下，独立起草提示词、核对提示词、核对轮数和旧方式表达偏好仍保留，但界面隐藏；关闭该项目的勾选后恢复旧方式。总开关关闭时 A 直接发言。
-- 完整提示预设（`complete: true`）可能覆盖插件追加的规则。插件会在实际生效的 `system/message` 中核对规则标记；缺失时跳过翻译并显示 A 原文，不额外调用 B。DSH 0.2.2 在 step preparation 后拒绝 `agent/request` 改路由；插件仍保留路由复核，用于兼容允许该改法的旧版或自定义组合。
-- 翻译方式只读取 A 的最终正文，所以同一项目的历史再长也不会进入 B 的翻译输入；但 A 仍需携带完整上下文，真实模型的输出质量、延迟和费用需要按项目抽样验证。
+## 安装与更新
 
-## 安装和配置
-
-默认关闭，不附带账号、密钥或 A/B 路由。先在 DSH 配置可用 provider 和模型。旧方式每次回复默认增加两次 B 调用，核对轮数增加时费用和等待随之增加；翻译方式只增加一次 B 调用。默认最多同时处理 2 条回复。旧方式的 B 会读取更完整的工作材料，输入量通常高于旧版；翻译方式只读取 A 的最终正文。
-
-使用目标 DSH 安装自带的 CLI 安装到指定 profile（`dsh` 代表该 CLI；本机 shell 使用 RTK）：
-
-在 DSH 插件管理器中选择“添加插件”，输入仓库 URL `https://github.com/bayuefeiyu/model-spokesperson`。仓库根目录声明组合包并包含预构建入口。DSH 0.2.2-rc.3 用户应选择默认分支，历史版本 tag 仍有对应的宿主版本限制。
+DSH 插件管理器添加仓库地址 [model-spokesperson](https://github.com/bayuefeiyu/model-spokesperson)。默认分支包含预构建入口，历史 tag 保持各自的宿主版本限制。升级后刷新页面或重启 DSH，以加载新 Client。
 
 ```powershell
 rtk proxy dsh plugin --profile YOUR_PROFILE add https://github.com/bayuefeiyu/model-spokesperson
-# 也可下载 Release 安装包后使用本地路径：
-rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.4.tgz
+# 或安装本地打包产物：
+rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-spokesperson/dist/dsh-plugins-model-spokesperson-0.3.5.tgz
 ```
 
-如果之前通过仓库 URL 安装成了普通依赖 `model-spokesperson-development`，先在同一 profile 移除它，再安装上述新版本；不要只对旧依赖重启或刷新。0.1.0 的独立 tarball 不受根清单缺失影响。
+插件详情的更新按钮检查 GitHub Release 的 tarball 资产；仅推送源码不会产生 Release。Git URL 安装来源可重新安装默认分支，或使用上述本地包。卸载插件保留配置和会话记录。
 
-从 0.1.2 起可直接在前端设置：
+## 翻译、失败与历史
 
-1. 打开 **插件 → @dsh-plugins/model-spokesperson**。
-2. 在“模型与表达”点击 **添加模型映射**，从 DSH 已配置的模型中选择 A（完成工作）和 B（独立作答或翻译）。
-3. 勾选 **开启 B 回复**。如需英文底稿 + 中文翻译，在“工作方式（按项目）”选择项目并勾选 **本项目使用英文底稿和中文翻译**；否则继续使用独立起草 + 核对。按需修改英文回复要求、翻译提示词、旧方式提示词或高级设置，然后点击 **保存设置**。
-4. 在聊天输入框选择 A 并开始对话。此处映射不会自动切换会话模型。
+- B 的 system 为翻译提示词和目标语言，user 只包含当前 A 正文；文风直接写入翻译提示词。
+- 等待时显示“B 正在翻译…”，完成后原行显示译文，可查看 A 原文、复制 B 回复。刷新回放已保存译文，不重复调用。
+- 失败、超时、截断、空输出或超限时回退 A 原文。手动重试只调用 B，使用当前翻译设置，不重跑 A 或工具。
+- 新输入、取消、卸载会停止挂起任务，迟到结果不会提交；多会话隔离并有队列并发限制。
+- 已显示的 B 文字会在下一次用户提问时同步到 A 的上下文；A 原始消息、usage 和 replayState 保留，B 用量单独记录。
 
-界面支持多组映射；同一 provider/model 的 A 只能出现一次。只有保存才写入当前 profile；刷新和重启保留设置，修改对后续回复生效，进行中的整理保留原设置。部分模型暂时不可用时保留已有选择；并发修改会提示冲突，不会直接覆盖。
+设置通过原生 ConfigForm 保存。未保存的修改不生效；并发修改会提示冲突。保存只影响后续回复，进行中的翻译保留开始时的设置。
 
-### 自定义提示词（0.2.1）
+高级设置支持超时、并发、输入字符和输出 token 预算。超时和输入上限为 0 表示插件不额外限制；输出为 0 表示跟随 B 模型配置。实际仍受提供方限制。超出自设输入预算会回退，不截断；提高预算保存后可重试。升级保留用户已有显式限额。
 
-旧方式在 **模型与表达 → 提示词设置** 展开并编辑“独立起草提示词”和“核对完善提示词”。两项均预填当前完整默认内容，包含原先共用的职责和事实要求；保存后替换对应阶段全文，不另外附加隐藏的默认正文。旧方式的“表达偏好”仍作为单独一行附在提示词末尾；翻译方式不使用它。
-
-每项提供“恢复默认”按钮，只修改当前草稿，仍须保存。不能保存空白提示词。编辑、保存和恢复均通过原生 ConfigForm，刷新及重启保留；修改只用于后续回复，进行中的多轮调用使用开始时的提示词快照。
-
-起草请求的 JSON 字段为 `userQuestion`、`workContext`；核对还包含 `ownDraft`（B 上一稿）、`sourceReport`（A 参考稿）、`reviewRound`。插件独立提供数据，不在提示词中替换占位符。核对轮数为 0 时不使用核对提示词。手动配置字段为 `draftPrompt`、`reviewPrompt`，未设置时沿用内置默认值；用户已经保存的内容在升级后保留。
-
-### 失败后重试（0.2.2）
-
-“B 回复未完成，已显示 A 原文。”旁提供 **重试 B 回复**。只重新请求 B，复用那次回复的工作材料，不重新调用 A 或执行工具。
-
-0.2.4 在失败行显示具体原因。输入超限时，新记录显示请求总字符数、用户设置的上限及修改位置；旧历史记录至少显示超限原因，点击重试会按当前设置计算实际所需字符数。仍超限的重试会立即提示，不进入 B 队列、不增加重试次数。
-
-若反复重试仍没有 B，先检查 **高级设置 → 每次输入字符上限（0 不限）**。该项计算每步提示词与 JSON 工作材料的字符数，与模型的 token 上下文窗口不同；例如材料已超过一百万字符时，设置 `1000000` 会在调用 B 前被插件阻止。改为 `0` 或提高预算，保存后重试即可使用当前设置，不需要重做 A 的任务。核对阶段还会增加 B 初稿和 A 报告，可能比起草更大。
-
-核对失败时复用成功的 B 初稿和前几轮核对结果，从失败阶段继续。重试使用当前映射的 B、提示词、核对轮数和限额；如果 B 模型或起草提示词/表达偏好改变，会重新独立起草。翻译失败的重试使用当前翻译提示词、目标语言和限额，只额外调用一次 B。只有输入、提示词和模型完全一致的成功阶段才会复用，失败调用与用量保留累计。
-
-不自动重试。重复点击有前后端保护；A 正在工作时不能发起重试，新用户输入或取消会停止进行中的重试。刷新或重启后仍可手动重试保留了工作材料的 0.2.x 失败记录；原文已删除、重生成或材料缺失时会提示无法重试。旧版首次调用前失败若没有快照，只能从仍有效的原报告之前的历史恢复材料，不会混入后来的对话。0.1.x 润色记录不支持此入口。
-
-### 插件详情页一键更新（0.2.3）
-
-从 0.2.3 起，打开 **插件 → @dsh-plugins/model-spokesperson** 时，标题栏会出现更新控件：
-
-- 自动读取公开仓库的最新稳定 Release；当前已是最新时显示“已是最新 vX”，仍可点击重新检查。
-- 有新版本时显示 **更新到 vX**；点击后通过 DSH 原生插件管理器安装该 Release 的 npm tarball，覆盖安装，不先卸载正在显示按钮的插件自身。使用 tarball 而不是 Git spec，避免 Host 固定的五秒 Git 连接预检把慢网络误判为失败。
-- 返回 `applied` 时提示 **刷新页面**；返回 `restart-required` 时提示重启 DSH。Host 的 HMR 能原地重组时不需要重启，但浏览器 Client 始终需要刷新才能加载新界面。
-- 更新只修改 profile 的 `package.json` 与 `pnpm-lock.yaml`，A/B 映射、表达偏好、自定义提示词和历史展示稿均保留。
-- 检查使用公开 GitHub API，只接受带 `dsh-plugins-model-spokesperson-X.Y.Z.tgz` 资产的稳定 Release；网络失败、限流、无稳定 Release 或不兼容版本会显示可读原因并保留原版本。不会静默自动安装。
-
-0.2.2 及更早版本没有这个入口，需要先手动安装 0.2.3 一次；此后发布的新版本可在插件页一键更新。
-
-通过 GitHub URL 安装的旧版本，在同一 profile 的插件管理器卸载后重装 0.2.3；卸载保留 profile 配置。0.2.3 起也可以直接在插件详情页一键更新后续版本。上游 registry/npm 更新入口不适用于 Git URL 来源。也可以手动在该 profile 的 `cordis.patch.yml` 加入或合并：
+手动配置示例（workspace id 建议由设置页选择）：
 
 ```yaml
 - id: model-spokesperson-host
@@ -96,9 +50,7 @@ rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-
     rules:
       - source: { provider: YOUR_A_PROVIDER, model: YOUR_A_MODEL }
         writer: { provider: YOUR_B_PROVIDER, model: YOUR_B_MODEL }
-    style: '中文，结论先行，少术语，清楚自然，事实准确。'
-    reviewRounds: 1
-    translationWorkspaces: []
+    translationWorkspaces: [YOUR_WORKSPACE_ID]
     translationTarget: '中文'
     timeoutMs: 0
     maxConcurrentRewrites: 2
@@ -106,22 +58,7 @@ rtk proxy dsh plugin --profile YOUR_PROFILE add G:/ai/harness/dsh-plugins/model-
     maxOutputTokens: 0
 ```
 
-可添加多个 source；每个 source 只能一条规则，B 可与 A 同路由。不在此填写密钥。`translationWorkspaces` 填 DSH workspace id（由设置页选择，不建议手写）；`englishPrompt` 省略时使用内置的 A 英文回复要求，`translationPrompt` 省略时使用内置翻译全文，两者都可在设置页编辑。`style` 仅用于未启用翻译的旧方式。
-
-- `reviewRounds: 1` 表示独立起草 + 一轮核对；设为 0 时只起草，始终不向 B 提供 A 本次报告。多轮核对都基于 B 上一稿继续完善。翻译方式不使用该值，固定为一次翻译。
-- `translationWorkspaces` 中列出的项目使用英文底稿 + 单次翻译；其他项目保持旧方式。该值由设置页按 workspace id 写入。
-- `maxInputChars: 0` 表示插件不额外限制字符数；正数是每次 B 请求的指令和材料总字符上限。旧方式核对输入还包含 B 上一稿及 A 报告；翻译方式只包含翻译提示词和 A 正文。超过用户设置的预算直接回退，不截断材料。
-- `maxOutputTokens: 0` 表示不覆盖 B 提供方/模型的默认输出预算；正数按用户设置传入，不再限制为 32768。实际能力仍受模型和端点限制，插件不保证任意模型有 1M 上下文。
-- `timeoutMs: 0` 表示插件不额外设置超时；正数是排队、起草及全部核对的总时间。不再有隐含的“输入字符数 × 4”输出上限。
-- 升级保留已有显式设置，包括旧版写入的 30000 字符、8192 tokens、45 秒等。需要放宽时在设置中改为 0 或自行指定。
-
-`enabled: false` 停止后续整理，历史稿仍可读。完全停用并显示全部原文时，在 profile 中将 `model-spokesperson-host` 和 `model-spokesperson-ui` 都设为 `disabled: true`，或卸载 bundle：
-
-```powershell
-rtk proxy dsh plugin --profile YOUR_PROFILE remove @dsh-plugins/model-spokesperson
-```
-
-卸载保留会话原文及可忽略的插件记录。重装可恢复历史稿。升级本地 tarball 时使用新文件名或正式版本号，避免 pnpm 复用旧缓存。
+省略 englishPrompt、translationPrompt 时使用内置默认值，可在设置页编辑并逐项恢复默认。
 
 ## 开发和验证
 
@@ -135,26 +72,9 @@ rtk proxy npm run build
 rtk proxy npm run pack:plugin
 ```
 
-已有真实 AgentLoop 的 mock 测试、React/SlotCore 测试和隔离 Web 浏览器验收。当前流程见 [独立报告验收](evidence/report-validation.md)、[开发步骤](docs/DEVELOPMENT.md)、[交接](HANDOFF.md)。未调用真实收费模型，真实 B 的独立写作质量、核对效果和延迟仍需配置路由后验收。
 
-0.1.1 修复 GitHub URL 安装不识别组合包的问题；根清单与 tarball 共用同一布局，预构建文件随 Git 提交。新增分发回归测试，类型检查与 20 项测试通过。修复与 URL 安装验收见 [分发修复记录](evidence/distribution-fix.md)。
+已有真实 AgentLoop mock、原生设置组件和隔离 Web 验收。开发不改日常 desktop 安装包或配置，也不调用收费 API。真实模型的英文遵循率、译文质量和费用仍需抽样。
 
-0.1.2 增加原生插件详情设置界面，配置通过宿主 ConfigForm 和 volatile Config 引用保存并生效。类型检查和 26 项测试通过；浏览器验证未保存不落盘、保存后下一条回复使用新配置、界面关闭 B、刷新及进程重启后保留配置。关闭后仍同步此前展示稿，保持历史讨论可理解。见 [设置界面验收](evidence/settings-validation.md)。
+当前支持主聊天 Web，不处理子 agent、标题、压缩摘要、CLI/SDK 或导出。第三方聊天 renderer 需单独适配。
 
-0.2.0 将成稿润色改为“独立起草 → 参考 A 报告核对自己的稿件”，设置支持核对轮数及用户控制预算。旧版历史展示稿继续回放，不补跑新流程。新稿允许重排信息，不再按 A 成稿的数字/代码出现次数和顺序作机械等同校验；事实核对依靠模型指令与证据，不能证明内容必然正确。
-
-0.2.3 在插件详情页增加公开仓库版本检查和一键更新；客户端读取 GitHub 稳定 Release 及其 tarball 资产，安装时覆盖安装，不调用 `removeBundle`。类型检查、56 项测试、构建和隔离 Web 验收通过；没有静默自动安装，也不修改 DSH 安装包。0.2.2 及更早版本需要首次手动安装 0.2.3。验收见 [更新验收](evidence/update-validation.md)。
-
-0.3.0 增加按项目的“英文底稿 + 单次中文翻译”。A 的系统提示注入英文规则；翻译分支不采集、传输或持久化工作材料，B 只收到 A 的最终正文并调用一次。完整提示预设和路由变化会跳过翻译并记录原因。
-
-0.3.1 将目标升级到 DSH **0.2.2-rc.1**：SDK 依赖、Cordis 4.1.0、Cosmokit 1.9.0、Schemastery 3.19.0 同步更新；`sessionProjections.register` 改为 awaited handle，路由切换测试改用 `agent.model.select()`（0.2.2 在 step preparation 后拒绝 `agent/request` 改路由）。
-
-0.3.2 将 A 的英文回复要求开放为可编辑设置（`englishPrompt`，可恢复默认），翻译和文风要求写入 `translationPrompt`。0.3.3 修复真实 Web 中项目选择器缺失的服务依赖问题，补齐原生设置保存、项目翻译、单次 B 输入、原文入口、刷新回放和旧流程恢复的浏览器验收。结果见 [翻译浏览器检查](evidence/translation-browser.json)。真实 A/B 的英文遵循率、译文质量和费用仍需按项目抽样。
-
-工作上下文来自当时有效的会话消息；若宿主已压缩历史，只能提供保留下来的材料。A 本次调用中新产生且未写入先前记录的结论，第一步 B 无法获知，第二步只能把 A 报告作为参考核查。附件本身不直接读取，B 只获得不可见标记和 A 已实际读取的记录。
-
-当前支持主聊天 Web，不处理子 agent、标题、压缩摘要、CLI/SDK 或导出。第三方替换聊天 renderer 或带嵌套子槽的自定义思考/图片 renderer 需单独适配。
-
-[需求](docs/REQUIREMENTS.md) · [设计](docs/DESIGN.md) · [决策](docs/DECISIONS.md) · [任务](docs/TASKS.md) · [验收矩阵](docs/TEST-PLAN.md) · [翻译验收](evidence/translation-validation.md) · [0.2.2 适配](evidence/dsh-0.2.2-compat.md) · [运行时证据](evidence/runtime-inspection.json)
-
-日常安装 `G:\ai\harness\dsh desktop` 仅作只读参考。本次未向日常桌面 profile 安装插件，未修改其配置或安装包。
+[需求](docs/REQUIREMENTS.md) · [设计](docs/DESIGN.md) · [决策](docs/DECISIONS.md) · [任务](docs/TASKS.md) · [交接](HANDOFF.md)

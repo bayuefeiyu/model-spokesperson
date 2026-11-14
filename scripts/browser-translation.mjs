@@ -40,15 +40,15 @@ try {
   if (!verifyOnly) {
     await page.getByRole('button', { name: '添加模型映射', exact: true }).click();
     await page.getByLabel('第 1 组 A 模型（完成工作）').selectOption(JSON.stringify(['spokesperson-mock', 'a']));
-    await page.getByLabel('第 1 组 B 模型（独立作答）').selectOption(JSON.stringify(['spokesperson-mock', 'b']));
+    await page.getByLabel('第 1 组 B 模型（翻译回复）').selectOption(JSON.stringify(['spokesperson-mock', 'b']));
     await page.getByRole('checkbox', { name: '开启 B 回复', exact: true }).check();
   }
   const project = page.getByLabel('项目', { exact: true });
   await project.waitFor();
   assert.ok(await project.locator('option').count() > 0);
   const workspaceId = await project.inputValue();
-  if (!verifyOnly) await page.getByRole('checkbox', { name: '本项目使用英文底稿和中文翻译', exact: true }).check();
-  else assert.ok(await page.getByRole('checkbox', { name: '本项目使用英文底稿和中文翻译', exact: true }).isChecked());
+  if (!verifyOnly) await page.getByRole('checkbox', { name: '在本项目启用嘴替', exact: true }).check();
+  else assert.ok(await page.getByRole('checkbox', { name: '在本项目启用嘴替', exact: true }).isChecked());
   const english = page.getByLabel('A 的英文回复要求', { exact: true });
   const prompt = page.getByLabel('翻译提示词', { exact: true });
   assert.ok((await english.inputValue()).includes('must be written in English'));
@@ -61,7 +61,7 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await settings();
   assert.equal(await project.inputValue(), workspaceId);
-  assert.ok(await page.getByRole('checkbox', { name: '本项目使用英文底稿和中文翻译', exact: true }).isChecked());
+  assert.ok(await page.getByRole('checkbox', { name: '在本项目启用嘴替', exact: true }).isChecked());
   assert.equal(await prompt.inputValue(), customPrompt);
   checks.push('project choice and custom translation prompt survive reload');
 
@@ -94,17 +94,27 @@ try {
   await page.screenshot({ path: 'evidence/translation-browser.png', fullPage: true });
 
   await settings();
-  await page.getByRole('checkbox', { name: '本项目使用英文底稿和中文翻译', exact: true }).uncheck();
-  assert.ok(await page.getByLabel('表达偏好', { exact: true }).isVisible());
+  await page.getByRole('checkbox', { name: '在本项目启用嘴替', exact: true }).uncheck();
+  assert.equal(await page.getByLabel('表达偏好', { exact: true }).count(), 0);
   await save();
-  const legacyStart = (await calls()).length;
-  await send('请解释关闭翻译后的方式 ' + Date.now());
-  const legacy = (await calls()).slice(legacyStart);
-  assert.deepEqual(legacy.map(call => call.model), ['a', 'b', 'b']);
-  assert.ok(!legacy[0].messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('[model-spokesperson:english-reply]')));
-  checks.push('turning off the project option restores legacy drafting and review and removes the current English rule');
+  assert.equal(await page.getByLabel('表达偏好', { exact: true }).count(), 0);
+  assert.equal(await page.getByLabel('核对轮数', { exact: true }).count(), 0);
+  assert.equal(await page.getByLabel('独立起草提示词', { exact: true }).count(), 0);
+  assert.equal(await page.getByLabel('核对完善提示词', { exact: true }).count(), 0);
+  await project.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'evidence/translation-settings.png' });
+  checks.push('disabled project still shows translation editors; legacy style, draft and review controls are absent');
+  const directStart = (await calls()).length;
+  await page.getByText('新会话', { exact: true }).first().click();
+  await page.locator('[contenteditable="true"]').first().fill('请直接回复 ' + Date.now());
+  await page.getByRole('button', { name: '发送消息', exact: true }).click();
+  await page.getByText('针对当前事项，综合考量后建议采用第一种实现。', { exact: true }).waitFor();
+  const direct = (await calls()).slice(directStart);
+  assert.deepEqual(direct.map(call => call.model), ['a']);
+  assert.ok(!direct[0].messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('[model-spokesperson:english-reply]')));
+  checks.push('turning off the project option uses A directly, removes the English rule and never calls B');
   await settings();
-  await page.getByRole('checkbox', { name: '本项目使用英文底稿和中文翻译', exact: true }).check();
+  await page.getByRole('checkbox', { name: '在本项目启用嘴替', exact: true }).check();
   await save();
   assert.deepEqual(errors, []);
   const manifest = JSON.parse(await readFile('package.json', 'utf8'));

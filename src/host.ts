@@ -45,7 +45,7 @@ function totalUsage(stages: NonNullable<Rewrite['stages']>): TokenUsage | undefi
   return sum;
 }
 
-/** A executes; B drafts independently and then checks its own report against A's. */
+/** A executes; new replies use one text-only translation. Legacy records remain readable/retryable. */
 export async function apply(ctx: Context, raw: RuntimeSettings = {}) {
   const queue = new RewriteQueue(readSettings(raw).maxConcurrentRewrites);
   ctx.inject(['settings'], child => {
@@ -452,16 +452,7 @@ export async function apply(ctx: Context, raw: RuntimeSettings = {}) {
         save(agent.session, attempt.row);
         return;
       }
-      if (!rule) return;
-      const attempt: Attempt = {
-        row: { schemaVersion: 1, policyVersion: 2, promptVersion: 2, sessionId: agent.session.id,
-          turn: frame.turn, step: frame.step, attemptId: frame.attemptId,
-          source: rule.source, writer: rule.writer, status: 'collecting', retryCount: 0, reviewRounds: settings.reviewRounds, startedAt: Date.now() },
-        context: captureWorkContext(agent.session.deriveMessages(), projection.stateOf(agent.session).rows),
-        policy: settings, terminal: false, done: false, controller: new AbortController(),
-      };
-      map.set(key, attempt);
-      save(agent.session, attempt.row);
+      // Unlisted projects use A directly. Never start a legacy draft/review attempt.
       return;
     }
     const attempt = [...map.values()].find(item => item.row.attemptId === frame.attemptId);

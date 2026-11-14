@@ -7,7 +7,7 @@ import type { ModelCatalog } from '@deepseek-ai/dsh-api-session-controller/types
 import { SettingsView } from '../src/settings-view.tsx';
 import { SettingsSchema, type Settings } from '../src/contract.ts';
 import { Config, readSettings } from '../src/config.ts';
-import { DRAFT_SYSTEM, ENGLISH_REPLY_RULE, REVIEW_SYSTEM, TRANSLATE_SYSTEM } from '../src/prompt.ts';
+import { ENGLISH_REPLY_RULE, TRANSLATE_SYSTEM } from '../src/prompt.ts';
 import type { WorkspaceListModel } from '../src/workspace-client.ts';
 
 const rule = { source: { provider: 'mock', model: 'a' }, writer: { provider: 'mock', model: 'b' } };
@@ -80,9 +80,9 @@ test('UI rejects duplicate source routes and refuses to overwrite a concurrent e
   assert.equal(button(view!.root,'保存设置').props.disabled,true);
   assert.ok(view!.root.findAllByProps({role:'alert'}).some(node=>label(node).includes('只能配置一次')));
   act(()=>button(view!.root,'放弃修改').props.onClick());
-  act(()=>view!.root.findByProps({'aria-label':'表达偏好'}).props.onChange({target:{value:'保留我的修改'}}));
-  act(()=>f.external(SettingsSchema.parse({enabled:true,rules:[rule],style:'别处的设置'})));
-  assert.equal(view!.root.findByProps({'aria-label':'表达偏好'}).props.value,'保留我的修改');
+  act(()=>view!.root.findByProps({'aria-label':'翻译提示词'}).props.onChange({target:{value:'保留我的修改'}}));
+  act(()=>f.external(SettingsSchema.parse({enabled:true,rules:[rule],translationPrompt:'别处的设置'})));
+  assert.equal(view!.root.findByProps({'aria-label':'翻译提示词'}).props.value,'保留我的修改');
   assert.equal(button(view!.root,'保存设置').props.disabled,true);
   assert.equal(f.calls.length,0);
   view!.unmount();
@@ -94,24 +94,24 @@ test('failed saves preserve the draft and an unavailable model never erases its 
   let view: ReturnType<typeof create>;
   await act(async()=>{view=create(<SettingsView form={f.form} loadCatalog={async()=>{throw new Error('offline');}}/>);});
   assert.equal(view!.root.findAllByType('select')[1].props.value,JSON.stringify(['old','missing']));
-  act(()=>view!.root.findByProps({'aria-label':'表达偏好'}).props.onChange({target:{value:'新的表达偏好'}}));
+  act(()=>view!.root.findByProps({'aria-label':'翻译提示词'}).props.onChange({target:{value:'新的表达偏好'}}));
   await act(async()=>{view!.root.findByType('form').props.onSubmit({preventDefault(){}});});
   assert.equal(f.calls.length,1);
-  assert.equal(view!.root.findByProps({'aria-label':'表达偏好'}).props.value,'新的表达偏好');
+  assert.equal(view!.root.findByProps({'aria-label':'翻译提示词'}).props.value,'新的表达偏好');
   assert.ok(view!.root.findAllByProps({role:'alert'}).some(node=>label(node).includes('保存未成功')));
   view!.unmount();
 });
 
-test('UI saves review rounds and large or unlimited budgets without the old caps', async () => {
+test('UI saves large or unlimited translation budgets', async () => {
   const f = fixture({ enabled: true, rules: [rule], maxInputChars: 30000, maxOutputTokens: 8192 });
   let view: ReturnType<typeof create>;
   await act(async () => { view = create(<SettingsView form={f.form} loadCatalog={async () => catalog} />); });
-  const fields = [ ['核对轮数', '3'], ['每次输入字符上限（0 不限）', '0'], ['每次输出 tokens（0 跟随模型）', '100000'] ];
+  const fields = [ ['每次输入字符上限（0 不限）', '0'], ['每次输出 tokens（0 跟随模型）', '100000'] ];
   for (const [name, value] of fields) act(() => view!.root.findByProps({ 'aria-label': name }).props.onChange({ target: { value } }));
   assert.equal(f.calls.length, 0);
   assert.equal(button(view!.root, '保存设置').props.disabled, false);
   await act(async () => { view!.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
-  assert.deepEqual(f.form.getSnapshot().value, SettingsSchema.parse({ enabled: true, rules: [rule], reviewRounds: 3, maxInputChars: 0, maxOutputTokens: 100000 }));
+  assert.deepEqual(f.form.getSnapshot().value, SettingsSchema.parse({ enabled: true, rules: [rule], maxInputChars: 0, maxOutputTokens: 100000 }));
   view!.unmount();
 });
 
@@ -127,16 +127,16 @@ function workspaceList(items = [
   };
 }
 
-test('translation mode is configured per project and hides legacy prompt fields', async () => {
+test('project controls only enablement; legacy controls are absent even when disabled', async () => {
   const f = fixture({ enabled: true, rules: [rule] });
   const workspaces = workspaceList();
   let view: ReturnType<typeof create>;
   await act(async () => { view = create(<SettingsView form={f.form} loadCatalog={async () => catalog} workspaces={workspaces} />); });
   assert.equal(view!.root.findByProps({ 'aria-label': '项目' }).props.value, 'ws-1');
-  assert.equal(view!.root.findAllByProps({ 'aria-label': '翻译目标语言' }).length, 0);
-  assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 1);
-  assert.equal(view!.root.findAllByProps({ 'aria-label': '表达偏好' }).length, 1);
-  act(() => view!.root.findByProps({ 'aria-label': '本项目使用英文底稿和中文翻译' }).props.onChange({ target: { checked: true } }));
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '翻译目标语言' }).length, 1);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 0);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '表达偏好' }).length, 0);
+  act(() => view!.root.findByProps({ 'aria-label': '在本项目启用嘴替' }).props.onChange({ target: { checked: true } }));
   assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 0);
   assert.equal(view!.root.findAllByProps({ 'aria-label': '核对轮数' }).length, 0);
   assert.equal(view!.root.findAllByProps({ 'aria-label': '表达偏好' }).length, 0);
@@ -155,9 +155,9 @@ test('translation mode is configured per project and hides legacy prompt fields'
     { op: 'set', path: ['translationPrompt'], value: '自定义翻译要求' },
   ]);
   act(() => view!.root.findByProps({ 'aria-label': '项目' }).props.onChange({ target: { value: 'ws-2' } }));
-  assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 1);
-  assert.equal(view!.root.findAllByProps({ 'aria-label': '表达偏好' }).length, 1);
-  assert.equal(view!.root.findAllByProps({ 'aria-label': '翻译目标语言' }).length, 0);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '独立起草提示词' }).length, 0);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '表达偏好' }).length, 0);
+  assert.equal(view!.root.findAllByProps({ 'aria-label': '翻译目标语言' }).length, 1);
   view!.unmount();
 });
 
@@ -166,21 +166,21 @@ test('prompt editors preload full defaults, stage edits, reject empty text and r
   let view: ReturnType<typeof create>;
   await act(async () => { view = create(<SettingsView form={f.form} loadCatalog={async () => catalog} />); });
   const field = (name: string) => view!.root.findByProps({ 'aria-label': name });
-  assert.equal(field('独立起草提示词').props.value, DRAFT_SYSTEM);
-  assert.equal(field('核对完善提示词').props.value, REVIEW_SYSTEM);
-  act(() => field('独立起草提示词').props.onChange({ target: { value: '用户自己的起草要求\n保留换行。' } }));
-  act(() => field('核对完善提示词').props.onChange({ target: { value: '  \n ' } }));
+  assert.equal(field('A 的英文回复要求').props.value, ENGLISH_REPLY_RULE);
+  assert.equal(field('翻译提示词').props.value, TRANSLATE_SYSTEM);
+  act(() => field('A 的英文回复要求').props.onChange({ target: { value: '用户自己的起草要求\n保留换行。' } }));
+  act(() => field('翻译提示词').props.onChange({ target: { value: '  \n ' } }));
   assert.equal(f.calls.length, 0);
   assert.equal(button(view!.root, '保存设置').props.disabled, true);
-  assert.ok(view!.root.findAllByProps({ role: 'alert' }).some(node => label(node).includes('核对完善提示词不能为空')));
-  act(() => button(view!.root, '恢复默认核对提示词').props.onClick());
-  assert.equal(field('独立起草提示词').props.value, '用户自己的起草要求\n保留换行。');
-  assert.equal(field('核对完善提示词').props.value, REVIEW_SYSTEM);
+  assert.ok(view!.root.findAllByProps({ role: 'alert' }).some(node => label(node).includes('翻译提示词不能为空')));
+  act(() => button(view!.root, '恢复默认翻译提示词').props.onClick());
+  assert.equal(field('A 的英文回复要求').props.value, '用户自己的起草要求\n保留换行。');
+  assert.equal(field('翻译提示词').props.value, TRANSLATE_SYSTEM);
   assert.equal(f.calls.length, 0);
   await act(async () => { view!.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
-  assert.deepEqual(f.calls[0].ops, [{ op: 'set', path: ['draftPrompt'], value: '用户自己的起草要求\n保留换行。' }]);
-  act(() => button(view!.root, '恢复默认起草提示词').props.onClick());
-  assert.equal(field('独立起草提示词').props.value, DRAFT_SYSTEM);
+  assert.deepEqual(f.calls[0].ops, [{ op: 'set', path: ['englishPrompt'], value: '用户自己的起草要求\n保留换行。' }]);
+  act(() => button(view!.root, '恢复默认英文回复要求').props.onClick());
+  assert.equal(field('A 的英文回复要求').props.value, ENGLISH_REPLY_RULE);
   assert.equal(f.calls.length, 1, 'restore remains staged until Save');
   view!.unmount();
 });

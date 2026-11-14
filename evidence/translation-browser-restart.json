@@ -1,5 +1,5 @@
 {
-  "pluginVersion": "0.3.4",
+  "pluginVersion": "0.3.5",
   "runtimeVersion": "0.2.2-rc.3",
   "browser": "headless Microsoft Edge",
   "checks": [
@@ -9,7 +9,8 @@
     "Chinese translation replaces the source row without flashing the English original",
     "original disclosure works",
     "refresh replays the saved translation without another model call",
-    "turning off the project option restores legacy drafting and review and removes the current English rule"
+    "disabled project still shows translation editors; legacy style, draft and review controls are absent",
+    "turning off the project option uses A directly, removes the English rule and never calls B"
   ],
   "pageErrors": [],
   "realApiCalls": 0

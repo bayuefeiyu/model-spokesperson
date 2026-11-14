@@ -1,5 +1,12 @@
 # 实现设计
 
+## 当前行为：0.3.5 / DSH 0.2.2-rc.3
+
+新回复仅能创建 policyVersion 3 翻译 attempt。assistant-stream start 在项目未启用时直接返回，不捕获工作材料、不创建 policyVersion 2。模型映射及动态英文规则检查继续生效。
+
+设置移除旧表达偏好、起草/核对提示词及核对轮数，翻译字段始终显示。项目复选框重命名为“在本项目启用嘴替”，关闭后 A 直接回复。底层旧配置及旧记录恢复代码仅用于历史兼容。下述 0.2.x 架构和旧版验收按历史保留。
+
+
 当前本地开发版本 0.3.2，目标 DSH 0.2.2-rc.1。独立报告流程验收见 `evidence/report-validation.md`，提示词设置见 `evidence/prompt-validation.md`，重试见 `evidence/retry-validation.md`，输入超限反馈见 `evidence/input-limit-validation.md`，一键更新见 `evidence/update-validation.md`，按项目翻译见 `evidence/translation-validation.md`；其他旧版本证据按其版本保留。
 
 ```text

@@ -1,5 +1,12 @@
 # 开发交接
 
+## 当前修正：0.3.5（2026-11-14）
+
+用户指出设置仍保留旧功能。原因是此前将翻译作为可切换模式，关闭后仍启动旧流程。现在新回复只允许翻译，未启用项目由 A 直接回复；设置删除旧表达偏好、起草/核对提示词与轮数，翻译字段始终显示。旧记录及其手动恢复兼容代码保留，不用于新回复。
+
+实际执行 npm run check、npm test（59 项通过）、npm run build、npm run pack:plugin。0.3.5 tarball 安装到隔离 spokesperson-rc3 profile，browser-translation.mjs 及服务重启后的 --verify-only 均通过：保存/刷新/重启、单次翻译、原文展开、关闭项目后仅 A 调用、旧控件消失，页面无错误。测试只用 mock，没有改日常 desktop 配置或调用收费 API。证据见 evidence/translation-browser.json、evidence/translation-browser-restart.json 和 evidence/translation-settings.png。下方均为历史交接。
+
+
 2026-11-14：用户升级到 DSH 0.2.2-rc.3 后，0.3.3 的精确 rc.1 兼容声明阻止安装。0.3.4 将全部 SDK 和组件清单更新到 rc.3，Zod 更新到宿主使用的 4.6.6。新版移除了 agents.roots()，改用 get(id) 判定活跃实例、list() 遍历恢复，并通过持久化 origin 排除子 agent。类型检查与 70 项自动测试通过，隔离 rc.3 profile 的实际安装成功。旧 rc.1 开发依赖移到忽略目录 .dev/rc1-dependency-backup，锁文件为 rc.3 重新生成。安装使用 GitHub 默认分支，历史 tag 的宿主限制保持各自版本。详细证据见 evidence/dsh-rc3-compat.md。
 
 2026-11-14：在已实现的 0.3.2 基础上继续方案验收，修复真实 Web 设置页缺失项目选择器的问题。本地版本 0.3.3。Client 现在等待 `workspaces` 服务再挂载设置，UI manifest 声明 `@deepseek-ai/dsh-api-workspace-controller` 加载依赖。新增 `browser-translation.mjs` 和独立翻译 mock，完成实际 tarball 安装后的项目设置、单次翻译、输入隔离、原文入口、刷新回放及关闭后恢复旧流程验收。详细结果见 evidence/translation-browser.json。A/B 为模拟 adapter，真实模型的语言质量仍需抽样。
